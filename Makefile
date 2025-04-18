@@ -43,6 +43,10 @@ up-frontend: ## Start only frontend in detached mode
 down: ## Stop and remove containers
 	$(COMPOSE) down
 
+.PHONY: clean
+clean: ## Stop containers and remove volumes (force clean start)
+	$(COMPOSE) down --volumes
+
 .PHONY: bash-backend
 bash-backend: ## Access the bash shell inside the backend container
 	$(COMPOSE) exec backend bash
