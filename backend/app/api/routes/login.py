@@ -10,7 +10,7 @@ from app.api.deps import CurrentUser, SessionDep, get_current_active_superuser
 from app.core import security
 from app.core.config import settings
 from app.core.security import get_password_hash
-from app.models import Message, NewPassword, Token, UserPublic
+from app.schemas.user import Message, NewPassword, Token, UserPublic
 from app.utils import (
     generate_password_reset_token,
     generate_reset_password_email,
@@ -21,14 +21,15 @@ from app.utils import (
 router = APIRouter(tags=["login"])
 
 
-@router.post("/login/access-token")
+@router.post("/login/access-token", response_model=Token)
 def login_access_token(
-    session: SessionDep, form_data: Annotated[OAuth2PasswordRequestForm, Depends()]
-) -> Token:
+    session: SessionDep,
+    form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
+) -> Any:
     """
-    OAuth2 compatible token login, get an access token for future requests
+    OAuth2 compatible token login, get an access token for future requests.
     """
-    user = crud.authenticate(
+    user = crud.user.authenticate(
         session=session, email=form_data.username, password=form_data.password
     )
     if not user:
@@ -36,11 +37,12 @@ def login_access_token(
     elif not user.is_active:
         raise HTTPException(status_code=400, detail="Inactive user")
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    return Token(
-        access_token=security.create_access_token(
+    return {
+        "access_token": security.create_access_token(
             user.id, expires_delta=access_token_expires
-        )
-    )
+        ),
+        "token_type": "bearer",
+    }
 
 
 @router.post("/login/test-token", response_model=UserPublic)
@@ -56,19 +58,19 @@ def recover_password(email: str, session: SessionDep) -> Message:
     """
     Password Recovery
     """
-    user = crud.get_user_by_email(session=session, email=email)
+    db_user = crud.user.get_user_by_email(session=session, email=email)
 
-    if not user:
+    if not db_user:
         raise HTTPException(
             status_code=404,
             detail="The user with this email does not exist in the system.",
         )
     password_reset_token = generate_password_reset_token(email=email)
     email_data = generate_reset_password_email(
-        email_to=user.email, email=email, token=password_reset_token
+        email_to=db_user.email, email=email, token=password_reset_token
     )
     send_email(
-        email_to=user.email,
+        email_to=db_user.email,
         subject=email_data.subject,
         html_content=email_data.html_content,
     )
@@ -83,17 +85,17 @@ def reset_password(session: SessionDep, body: NewPassword) -> Message:
     email = verify_password_reset_token(token=body.token)
     if not email:
         raise HTTPException(status_code=400, detail="Invalid token")
-    user = crud.get_user_by_email(session=session, email=email)
-    if not user:
+    db_user = crud.user.get_user_by_email(session=session, email=email)
+    if not db_user:
         raise HTTPException(
             status_code=404,
             detail="The user with this email does not exist in the system.",
         )
-    elif not user.is_active:
+    elif not db_user.is_active:
         raise HTTPException(status_code=400, detail="Inactive user")
     hashed_password = get_password_hash(password=body.new_password)
-    user.hashed_password = hashed_password
-    session.add(user)
+    db_user.hashed_password = hashed_password
+    session.add(db_user)
     session.commit()
     return Message(message="Password updated successfully")
 
@@ -107,7 +109,7 @@ def recover_password_html_content(email: str, session: SessionDep) -> Any:
     """
     HTML Content for Password Recovery
     """
-    user = crud.get_user_by_email(session=session, email=email)
+    user = crud.user.get_user_by_email(session=session, email=email)
 
     if not user:
         raise HTTPException(
