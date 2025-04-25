@@ -1,0 +1,35 @@
+/* Custom utility classes */
+
+/* Purple theme utilities */
+.bg-purple {
+  background-color: #9b87f5;
+}
+
+.text-purple {
+  color: #9b87f5;
+}
+
+.hover\:bg-purple-dark:hover {
+  background-color: #7E69AB;
+}
+
+.bg-purple-light {
+  background-color: #e5deff;
+}
+
+.border-purple {
+  border-color: #9b87f5;
+}
+
+.hover\:bg-purple\/10:hover {
+  background-color: rgba(155, 135, 245, 0.1);
+}
+
+/* Layout utilities */
+.card {
+  padding: 2em;
+}
+
+.read-the-docs {
+  color: #888;
+} 

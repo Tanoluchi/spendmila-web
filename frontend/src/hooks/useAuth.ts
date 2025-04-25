@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useNavigate } from "@tanstack/react-router"
 import { useState } from "react"
+import { toast } from "sonner"
 
 import {
   type Body_login_login_access_token as AccessToken,
@@ -34,7 +35,10 @@ const useAuth = () => {
       navigate({ to: "/login" })
     },
     onError: (err: ApiError) => {
-      handleError(err)
+      handleError(err, (message) => {
+        setError(message)
+        toast.error(message)
+      })
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["users"] })
@@ -42,24 +46,42 @@ const useAuth = () => {
   })
 
   const login = async (data: AccessToken) => {
-    const response = await LoginService.loginAccessToken({
-      formData: data,
-    })
-    localStorage.setItem("access_token", response.access_token)
+    try {
+      const response = await LoginService.loginAccessToken({
+        formData: data,
+      })
+      localStorage.setItem("access_token", response.access_token)
+      return response
+    } catch (error) {
+      // Si es un error de red (backend no disponible)
+      if (error instanceof Error && error.message.includes('Failed to fetch')) {
+        throw new Error('Backend server is not available. Please try again later.')
+      }
+      // Si es otro tipo de error, lo propagamos
+      throw error
+    }
   }
 
   const loginMutation = useMutation({
     mutationFn: login,
     onSuccess: () => {
-      navigate({ to: "/" })
+      toast.success('Login successful!')
+      queryClient.invalidateQueries({ queryKey: ["currentUser"] })
+      navigate({ to: "/dashboard" })
     },
-    onError: (err: ApiError) => {
-      handleError(err)
+    onError: (err: Error | ApiError) => {
+      const message = err instanceof Error 
+        ? err.message 
+        : 'Invalid credentials or server error'
+      setError(message)
+      toast.error(message)
+      console.error('Login error:', err)
     },
   })
 
   const logout = () => {
     localStorage.removeItem("access_token")
+    queryClient.removeQueries({ queryKey: ["currentUser"] })
     navigate({ to: "/login" })
   }
 

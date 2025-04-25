@@ -1,25 +1,30 @@
-import { Box, Container, Text } from "@chakra-ui/react"
+import React from 'react';
+import Header from '@/components/Landing/Header';
+import Hero from '@/components/Landing/Hero';
+import Features from '@/components/Landing/Features';
+import Pricing from '@/components/Landing/Pricing';
+import Benefits from '@/components/Landing/Benefits';
+import Footer from '@/components/Landing/Footer';
+
 import { createFileRoute } from "@tanstack/react-router"
 
-import useAuth from "@/hooks/useAuth"
+const Index = () => {
+  return (
+    <div className="min-h-screen flex flex-col">
+      <Header />
+      <main className="flex-grow">
+        <Hero />
+        <Features />
+        <Pricing />
+        <Benefits />
+      </main>
+      <Footer />
+    </div>
+  );
+};
 
 export const Route = createFileRoute("/_layout/")({
-  component: Dashboard,
+  component: Index,
 })
 
-function Dashboard() {
-  const { user: currentUser } = useAuth()
-
-  return (
-    <>
-      <Container maxW="full">
-        <Box pt={12} m={4}>
-          <Text fontSize="2xl" truncate maxW="sm">
-            Hi, {currentUser?.full_name || currentUser?.email} 👋🏼
-          </Text>
-          <Text>Welcome back, nice to see you again!</Text>
-        </Box>
-      </Container>
-    </>
-  )
-}
+export default Index;

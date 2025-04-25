@@ -9,10 +9,15 @@ import React, { StrictMode } from "react"
 import ReactDOM from "react-dom/client"
 import { routeTree } from "./routeTree.gen"
 
-import { ApiError, OpenAPI } from "./client"
-import { CustomProvider } from "./components/ui/provider"
+// Importar estilos globales a través del punto de entrada único
+import "./styles"
 
-OpenAPI.BASE = import.meta.env.VITE_API_URL
+import { ApiError, OpenAPI } from "./client"
+import { ThemeProvider } from "next-themes"
+
+// Configurar la API base
+const apiUrl = import.meta.env.VITE_API_URL || '/api';
+OpenAPI.BASE = apiUrl;
 OpenAPI.TOKEN = async () => {
   return localStorage.getItem("access_token") || ""
 }
@@ -41,10 +46,10 @@ declare module "@tanstack/react-router" {
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <CustomProvider>
+    <ThemeProvider attribute="class" defaultTheme="light">
       <QueryClientProvider client={queryClient}>
         <RouterProvider router={router} />
       </QueryClientProvider>
-    </CustomProvider>
+    </ThemeProvider>
   </StrictMode>,
 )

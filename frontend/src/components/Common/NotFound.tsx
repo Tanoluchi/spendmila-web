@@ -1,57 +1,27 @@
-import { Button, Center, Flex, Text } from "@chakra-ui/react"
-import { Link } from "@tanstack/react-router"
+import { useLocation } from "react-router-dom";
+import { useEffect } from "react";
 
 const NotFound = () => {
+  const location = useLocation();
+
+  useEffect(() => {
+    console.error(
+      "404 Error: User attempted to access non-existent route:",
+      location.pathname
+    );
+  }, [location.pathname]);
+
   return (
-    <>
-      <Flex
-        height="100vh"
-        align="center"
-        justify="center"
-        flexDir="column"
-        data-testid="not-found"
-        p={4}
-      >
-        <Flex alignItems="center" zIndex={1}>
-          <Flex flexDir="column" ml={4} align="center" justify="center" p={4}>
-            <Text
-              fontSize={{ base: "6xl", md: "8xl" }}
-              fontWeight="bold"
-              lineHeight="1"
-              mb={4}
-            >
-              404
-            </Text>
-            <Text fontSize="2xl" fontWeight="bold" mb={2}>
-              Oops!
-            </Text>
-          </Flex>
-        </Flex>
+    <div className="min-h-screen flex items-center justify-center bg-gray-100">
+      <div className="text-center">
+        <h1 className="text-4xl font-bold mb-4">404</h1>
+        <p className="text-xl text-gray-600 mb-4">Oops! Page not found</p>
+        <a href="/" className="text-blue-500 hover:text-blue-700 underline">
+          Return to Home
+        </a>
+      </div>
+    </div>
+  );
+};
 
-        <Text
-          fontSize="lg"
-          color="gray.600"
-          mb={4}
-          textAlign="center"
-          zIndex={1}
-        >
-          The page you are looking for was not found.
-        </Text>
-        <Center zIndex={1}>
-          <Link to="/">
-            <Button
-              variant="solid"
-              colorScheme="teal"
-              mt={4}
-              alignSelf="center"
-            >
-              Go Back
-            </Button>
-          </Link>
-        </Center>
-      </Flex>
-    </>
-  )
-}
-
-export default NotFound
+export default NotFound;
