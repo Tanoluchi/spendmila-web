@@ -26,6 +26,8 @@ class SubscriptionBase(SQLModel):
     frequency: SubscriptionFrequency = Field(index=True)
     next_payment_date: date = Field(index=True)
     active: bool = Field(default=True, index=True)
+    icon: Optional[str] = Field(default=None, max_length=255)  # URL or string for subscription icon
+    color: Optional[str] = Field(default=None, max_length=50)  # Color code for subscription
 
     # Foreign Keys
     user_id: uuid.UUID = Field(foreign_key="user.id", index=True)

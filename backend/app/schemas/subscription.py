@@ -18,6 +18,8 @@ class SubscriptionBase(SQLModel):
     next_payment_date: date
     status: SubscriptionStatus = Field(default=SubscriptionStatus.ACTIVE)
     is_active: bool = True
+    icon: Optional[str] = Field(default=None, max_length=255)  # URL or string for subscription icon
+    color: Optional[str] = Field(default=None, max_length=50)  # Color code for subscription
 
 
 class SubscriptionRead(SubscriptionBase):
@@ -45,6 +47,8 @@ class SubscriptionUpdate(SQLModel):
     next_payment_date: Optional[date] = None
     status: Optional[SubscriptionStatus] = None
     is_active: Optional[bool] = None
+    icon: Optional[str] = Field(default=None, max_length=255)
+    color: Optional[str] = Field(default=None, max_length=50)
     currency_id: Optional[uuid.UUID] = None
     category_id: Optional[uuid.UUID] = None
 
