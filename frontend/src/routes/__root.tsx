@@ -1,6 +1,8 @@
 import { Outlet, createRootRoute } from "@tanstack/react-router"
 import React, { Suspense } from "react"
+import { ChakraProvider } from "@chakra-ui/react"
 
+import { system } from "@/theme"
 import NotFound from "@/components/Common/NotFound"
 
 const loadDevtools = () =>
@@ -23,12 +25,12 @@ const TanStackDevtools =
 
 export const Route = createRootRoute({
   component: () => (
-    <>
+    <ChakraProvider value={system}>
       <Outlet />
       <Suspense>
         <TanStackDevtools />
       </Suspense>
-    </>
+    </ChakraProvider>
   ),
   notFoundComponent: () => <NotFound />,
 })

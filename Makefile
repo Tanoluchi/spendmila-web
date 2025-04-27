@@ -13,8 +13,7 @@ help: ## Show this help message
 
 .PHONY: dev
 dev: ## Start backend and frontend in development mode (watch)
-	$(COMPOSE) watch backend frontend
-
+	$(COMPOSE) watch backend
 .PHONY: dev-backend
 dev-backend: ## Start only backend in development mode (watch)
 	$(COMPOSE) watch backend
