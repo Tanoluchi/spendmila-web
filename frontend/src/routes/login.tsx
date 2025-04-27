@@ -40,7 +40,7 @@ function Login() {
   })
 
   const onSubmit: SubmitHandler<AccessToken> = async (data) => {
-    if (form.formState.isSubmitting) return
+    if (!form.formState.isSubmitting) return
 
     resetError()
 
