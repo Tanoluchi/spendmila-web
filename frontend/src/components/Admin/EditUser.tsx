@@ -31,14 +31,17 @@ import { Field } from "../ui/field"
 
 interface EditUserProps {
   user: UserPublic
+  isOpen?: boolean
+  onClose?: () => void
 }
 
 interface UserUpdateForm extends UserUpdate {
   confirm_password?: string
 }
 
-const EditUser = ({ user }: EditUserProps) => {
-  const [isOpen, setIsOpen] = useState(false)
+const EditUser = ({ user, isOpen: propIsOpen, onClose }: EditUserProps) => {
+  const [internalIsOpen, setInternalIsOpen] = useState(false)
+  const isOpen = propIsOpen !== undefined ? propIsOpen : internalIsOpen
   const queryClient = useQueryClient()
   const { showSuccessToast } = useCustomToast()
   const {
@@ -60,7 +63,11 @@ const EditUser = ({ user }: EditUserProps) => {
     onSuccess: () => {
       showSuccessToast("User updated successfully.")
       reset()
-      setIsOpen(false)
+      if (onClose) {
+        onClose()
+      } else {
+        setInternalIsOpen(false)
+      }
     },
     onError: (err: ApiError) => {
       handleError(err)
@@ -82,7 +89,13 @@ const EditUser = ({ user }: EditUserProps) => {
       size={{ base: "xs", md: "md" }}
       placement="center"
       open={isOpen}
-      onOpenChange={({ open }) => setIsOpen(open)}
+      onOpenChange={({ open }) => {
+        if (onClose && !open) {
+          onClose()
+        } else {
+          setInternalIsOpen(open)
+        }
+      }}
     >
       <DialogTrigger asChild>
         <Button variant="ghost" size="sm">
