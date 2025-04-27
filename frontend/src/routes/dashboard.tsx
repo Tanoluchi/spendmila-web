@@ -1,12 +1,8 @@
 import React, { useState } from 'react';
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { createFileRoute, redirect, Link, useMatchRoute, Outlet } from "@tanstack/react-router";
 import useAuth, { isLoggedIn } from "@/hooks/useAuth";
 import { SidebarProvider, Sidebar, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarGroup, SidebarGroupContent, SidebarHeader, SidebarSeparator, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar";
-import { BarChart2, FileText, Landmark, CreditCard, PieChart, BarChart, ArrowDownToLine, ArrowUpFromLine, Settings, HelpCircle, Menu } from "lucide-react";
-import UserSummary from "@/components/Dashboard/UserSummary";
-import ExpensesChart from "@/components/Dashboard/ExpensesChart";
-import FinancialGoals from "@/components/Dashboard/FinancialGoals";
-import RecentTransactions from "@/components/Dashboard/RecentTransactions";
+import { BarChart2, FileText, Landmark, CreditCard, PieChart, BarChart, ArrowDownToLine, ArrowUpFromLine, Settings, HelpCircle, Menu, Bookmark } from "lucide-react";
 import DashboardHeader from "@/components/Dashboard/DashboardHeader";
 
 export const Route = createFileRoute("/dashboard")({
@@ -24,6 +20,7 @@ export const Route = createFileRoute("/dashboard")({
 function Dashboard () {
     const [activeSection, setActiveSection] = useState("Overview");
     const { user: currentUser } = useAuth();
+    const matchRoute = useMatchRoute();
 
     return (
         <SidebarProvider defaultOpen={true}>
@@ -47,63 +44,91 @@ function Dashboard () {
                 <SidebarGroupContent>
                     <SidebarMenu>
                     <SidebarMenuItem>
-                        <SidebarMenuButton 
-                        isActive={activeSection === "Overview"}
-                        onClick={() => setActiveSection("Overview")}
-                        >
-                        <BarChart2 className="dark:text-gray-200" size={18} />
-                        <span className='dark:text-gray-200'>Overview</span>
-                        </SidebarMenuButton>
+                        <Link to="/dashboard">
+                            <SidebarMenuButton 
+                            isActive={matchRoute({ to: "/dashboard" }) && !matchRoute({ to: "/dashboard/*" })}
+                            >
+                            <BarChart2 className="dark:text-gray-200" size={18} />
+                            <span className='dark:text-gray-200'>Overview</span>
+                            </SidebarMenuButton>
+                        </Link>
                     </SidebarMenuItem>
                     
                     <SidebarMenuItem>
-                        <SidebarMenuButton
-                        isActive={activeSection === "Transactions"}
-                        onClick={() => setActiveSection("Transactions")}
-                        >
-                        <FileText className="dark:text-gray-200" size={18} />
-                        <span className='dark:text-gray-200'>Transactions</span>
-                        </SidebarMenuButton>
+                        <Link to="/dashboard/transactions">
+                            <SidebarMenuButton
+                            isActive={matchRoute({ to: "/dashboard/transactions" })}
+                            >
+                            <FileText className="dark:text-gray-200" size={18} />
+                            <span className='dark:text-gray-200'>Transactions</span>
+                            </SidebarMenuButton>
+                        </Link>
                     </SidebarMenuItem>
                     
                     <SidebarMenuItem>
-                        <SidebarMenuButton
-                        isActive={activeSection === "Accounts"}
-                        onClick={() => setActiveSection("Accounts")}
-                        >
-                        <Landmark className="dark:text-gray-200" size={18} />
-                        <span className='dark:text-gray-200'>Accounts</span>
-                        </SidebarMenuButton>
+                        <Link to="/dashboard/accounts">
+                            <SidebarMenuButton
+                            isActive={matchRoute({ to: "/dashboard/accounts" })}
+                            >
+                            <Landmark className="dark:text-gray-200" size={18} />
+                            <span className='dark:text-gray-200'>Accounts</span>
+                            </SidebarMenuButton>
+                        </Link>
                     </SidebarMenuItem>
                     
                     <SidebarMenuItem>
-                        <SidebarMenuButton
-                        isActive={activeSection === "Debts"}
-                        onClick={() => setActiveSection("Debts")}
-                        >
-                        <CreditCard className="dark:text-gray-200" size={18} />
-                        <span className='dark:text-gray-200'>Debts</span>
-                        </SidebarMenuButton>
+                        <Link to="/dashboard/debts">
+                            <SidebarMenuButton
+                            isActive={matchRoute({ to: "/dashboard/debts" })}
+                            >
+                            <CreditCard className="dark:text-gray-200" size={18} />
+                            <span className='dark:text-gray-200'>Debts</span>
+                            </SidebarMenuButton>
+                        </Link>
                     </SidebarMenuItem>
                     
                     <SidebarMenuItem>
-                        <SidebarMenuButton
-                        isActive={activeSection === "Budgets"}
-                        onClick={() => setActiveSection("Budgets")}
-                        >
-                        <PieChart className="dark:text-gray-200" size={18} />
-                        <span className='dark:text-gray-200'>Budgets</span>
-                        </SidebarMenuButton>
+                        <Link to="/dashboard/budgets">
+                            <SidebarMenuButton
+                            isActive={matchRoute({ to: "/dashboard/budgets" })}
+                            >
+                            <PieChart className="dark:text-gray-200" size={18} />
+                            <span className='dark:text-gray-200'>Budgets</span>
+                            </SidebarMenuButton>
+                        </Link>
                     </SidebarMenuItem>
                     
                     <SidebarMenuItem>
-                        <SidebarMenuButton
-                        isActive={activeSection === "Goals"}
-                        onClick={() => setActiveSection("Goals")}
-                        >
-                        <BarChart className="dark:text-gray-200" size={18} />
-                        <span className='dark:text-gray-200'>Goals</span>
-                        </SidebarMenuButton>
+                        <Link to="/dashboard/goals">
+                            <SidebarMenuButton
+                            isActive={matchRoute({ to: "/dashboard/goals" })}
+                            >
+                            <BarChart className="dark:text-gray-200" size={18} />
+                            <span className='dark:text-gray-200'>Goals</span>
+                            </SidebarMenuButton>
+                        </Link>
+                    </SidebarMenuItem>
+                    
+                    <SidebarMenuItem>
+                        <Link to="/dashboard/charts">
+                            <SidebarMenuButton
+                            isActive={matchRoute({ to: "/dashboard/charts" })}
+                            >
+                            <PieChart className="dark:text-gray-200" size={18} />
+                            <span className='dark:text-gray-200'>Charts</span>
+                            </SidebarMenuButton>
+                        </Link>
+                    </SidebarMenuItem>
+                    
+                    <SidebarMenuItem>
+                        <Link to="/dashboard/subscriptions">
+                            <SidebarMenuButton
+                            isActive={matchRoute({ to: "/dashboard/subscriptions" })}
+                            >
+                            <Bookmark className="dark:text-gray-200" size={18} />
+                            <span className='dark:text-gray-200'>Subscriptions</span>
+                            </SidebarMenuButton>
+                        </Link>
                     </SidebarMenuItem>
                     </SidebarMenu>
                 </SidebarGroupContent>
@@ -115,23 +140,25 @@ function Dashboard () {
                 <SidebarGroupContent>
                     <SidebarMenu>
                     <SidebarMenuItem>
-                        <SidebarMenuButton
-                        isActive={activeSection === "Import"}
-                        onClick={() => setActiveSection("Import")}
-                        >
-                        <ArrowDownToLine className="dark:text-gray-200" size={18} />
-                        <span className='dark:text-gray-200'>Import</span>
-                        </SidebarMenuButton>
+                        <Link to="/dashboard/import">
+                            <SidebarMenuButton
+                            isActive={matchRoute({ to: "/dashboard/import" })}
+                            >
+                            <ArrowDownToLine className="dark:text-gray-200" size={18} />
+                            <span className='dark:text-gray-200'>Import</span>
+                            </SidebarMenuButton>
+                        </Link>
                     </SidebarMenuItem>
                     
                     <SidebarMenuItem>
-                        <SidebarMenuButton
-                        isActive={activeSection === "Export"}
-                        onClick={() => setActiveSection("Export")}
-                        >
-                        <ArrowUpFromLine className="dark:text-gray-200" size={18} />
-                        <span className='dark:text-gray-200'>Export</span>
-                        </SidebarMenuButton>
+                        <Link to="/dashboard/export">
+                            <SidebarMenuButton
+                            isActive={matchRoute({ to: "/dashboard/export" })}
+                            >
+                            <ArrowUpFromLine className="dark:text-gray-200" size={18} />
+                            <span className='dark:text-gray-200'>Export</span>
+                            </SidebarMenuButton>
+                        </Link>
                     </SidebarMenuItem>
                     </SidebarMenu>
                 </SidebarGroupContent>
@@ -143,23 +170,25 @@ function Dashboard () {
                 <SidebarGroupContent>
                     <SidebarMenu>
                     <SidebarMenuItem>
-                        <SidebarMenuButton
-                        isActive={activeSection === "Settings"}
-                        onClick={() => setActiveSection("Settings")}
-                        >
-                        <Settings className="dark:text-gray-200" size={18} />
-                        <span className='dark:text-gray-200'>Settings</span>
-                        </SidebarMenuButton>
+                        <Link to="/dashboard/settings">
+                            <SidebarMenuButton
+                            isActive={matchRoute({ to: "/dashboard/settings" })}
+                            >
+                            <Settings className="dark:text-gray-200" size={18} />
+                            <span className='dark:text-gray-200'>Settings</span>
+                            </SidebarMenuButton>
+                        </Link>
                     </SidebarMenuItem>
                     
                     <SidebarMenuItem>
-                        <SidebarMenuButton
-                        isActive={activeSection === "Help"}
-                        onClick={() => setActiveSection("Help")}
-                        >
-                        <HelpCircle className="dark:text-gray-200" size={18} />
-                        <span className='dark:text-gray-200'>Help</span>
-                        </SidebarMenuButton>
+                        <Link to="/dashboard/help">
+                            <SidebarMenuButton
+                            isActive={matchRoute({ to: "/dashboard/help" })}
+                            >
+                            <HelpCircle className="dark:text-gray-200" size={18} />
+                            <span className='dark:text-gray-200'>Help</span>
+                            </SidebarMenuButton>
+                        </Link>
                     </SidebarMenuItem>
                     </SidebarMenu>
                 </SidebarGroupContent>
@@ -169,23 +198,10 @@ function Dashboard () {
             
             {/* Main Content */}
             <SidebarInset className="p-4 md:p-6 overflow-y-auto">
-            <DashboardHeader currentUser={currentUser} />
+            <DashboardHeader currentUser={currentUser || null} />
             
-            <div className="grid gap-6">
-                {/* User Summary */}
-                <UserSummary />
-                
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Expenses Chart */}
-                <ExpensesChart />
-                
-                {/* Financial Goals */}
-                <FinancialGoals />
-                </div>
-                
-                {/* Recent Transactions */}
-                <RecentTransactions />
-            </div>
+            {/* Render the Outlet which will handle both index and child routes */}
+            <Outlet />
             </SidebarInset>
         </div>
         </SidebarProvider>

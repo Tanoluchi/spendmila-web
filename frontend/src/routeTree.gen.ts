@@ -17,7 +17,19 @@ import { Route as RecoverPasswordImport } from './routes/recover-password'
 import { Route as LoginImport } from './routes/login'
 import { Route as DashboardImport } from './routes/dashboard'
 import { Route as LayoutImport } from './routes/_layout'
+import { Route as DashboardIndexImport } from './routes/dashboard/index'
 import { Route as LayoutIndexImport } from './routes/_layout/index'
+import { Route as DashboardTransactionsImport } from './routes/dashboard/transactions'
+import { Route as DashboardSubscriptionsImport } from './routes/dashboard/subscriptions'
+import { Route as DashboardSettingsImport } from './routes/dashboard/settings'
+import { Route as DashboardImportImport } from './routes/dashboard/import'
+import { Route as DashboardHelpImport } from './routes/dashboard/help'
+import { Route as DashboardGoalsImport } from './routes/dashboard/goals'
+import { Route as DashboardExportImport } from './routes/dashboard/export'
+import { Route as DashboardDebtsImport } from './routes/dashboard/debts'
+import { Route as DashboardChartsImport } from './routes/dashboard/charts'
+import { Route as DashboardBudgetsImport } from './routes/dashboard/budgets'
+import { Route as DashboardAccountsImport } from './routes/dashboard/accounts'
 import { Route as LayoutSettingsImport } from './routes/_layout/settings'
 import { Route as LayoutItemsImport } from './routes/_layout/items'
 import { Route as LayoutAdminImport } from './routes/_layout/admin'
@@ -54,9 +66,69 @@ const LayoutRoute = LayoutImport.update({
   getParentRoute: () => rootRoute,
 } as any)
 
+const DashboardIndexRoute = DashboardIndexImport.update({
+  path: '/',
+  getParentRoute: () => DashboardRoute,
+} as any)
+
 const LayoutIndexRoute = LayoutIndexImport.update({
   path: '/',
   getParentRoute: () => LayoutRoute,
+} as any)
+
+const DashboardTransactionsRoute = DashboardTransactionsImport.update({
+  path: '/transactions',
+  getParentRoute: () => DashboardRoute,
+} as any)
+
+const DashboardSubscriptionsRoute = DashboardSubscriptionsImport.update({
+  path: '/subscriptions',
+  getParentRoute: () => DashboardRoute,
+} as any)
+
+const DashboardSettingsRoute = DashboardSettingsImport.update({
+  path: '/settings',
+  getParentRoute: () => DashboardRoute,
+} as any)
+
+const DashboardImportRoute = DashboardImportImport.update({
+  path: '/import',
+  getParentRoute: () => DashboardRoute,
+} as any)
+
+const DashboardHelpRoute = DashboardHelpImport.update({
+  path: '/help',
+  getParentRoute: () => DashboardRoute,
+} as any)
+
+const DashboardGoalsRoute = DashboardGoalsImport.update({
+  path: '/goals',
+  getParentRoute: () => DashboardRoute,
+} as any)
+
+const DashboardExportRoute = DashboardExportImport.update({
+  path: '/export',
+  getParentRoute: () => DashboardRoute,
+} as any)
+
+const DashboardDebtsRoute = DashboardDebtsImport.update({
+  path: '/debts',
+  getParentRoute: () => DashboardRoute,
+} as any)
+
+const DashboardChartsRoute = DashboardChartsImport.update({
+  path: '/charts',
+  getParentRoute: () => DashboardRoute,
+} as any)
+
+const DashboardBudgetsRoute = DashboardBudgetsImport.update({
+  path: '/budgets',
+  getParentRoute: () => DashboardRoute,
+} as any)
+
+const DashboardAccountsRoute = DashboardAccountsImport.update({
+  path: '/accounts',
+  getParentRoute: () => DashboardRoute,
 } as any)
 
 const LayoutSettingsRoute = LayoutSettingsImport.update({
@@ -114,9 +186,57 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutSettingsImport
       parentRoute: typeof LayoutImport
     }
+    '/dashboard/accounts': {
+      preLoaderRoute: typeof DashboardAccountsImport
+      parentRoute: typeof DashboardImport
+    }
+    '/dashboard/budgets': {
+      preLoaderRoute: typeof DashboardBudgetsImport
+      parentRoute: typeof DashboardImport
+    }
+    '/dashboard/charts': {
+      preLoaderRoute: typeof DashboardChartsImport
+      parentRoute: typeof DashboardImport
+    }
+    '/dashboard/debts': {
+      preLoaderRoute: typeof DashboardDebtsImport
+      parentRoute: typeof DashboardImport
+    }
+    '/dashboard/export': {
+      preLoaderRoute: typeof DashboardExportImport
+      parentRoute: typeof DashboardImport
+    }
+    '/dashboard/goals': {
+      preLoaderRoute: typeof DashboardGoalsImport
+      parentRoute: typeof DashboardImport
+    }
+    '/dashboard/help': {
+      preLoaderRoute: typeof DashboardHelpImport
+      parentRoute: typeof DashboardImport
+    }
+    '/dashboard/import': {
+      preLoaderRoute: typeof DashboardImportImport
+      parentRoute: typeof DashboardImport
+    }
+    '/dashboard/settings': {
+      preLoaderRoute: typeof DashboardSettingsImport
+      parentRoute: typeof DashboardImport
+    }
+    '/dashboard/subscriptions': {
+      preLoaderRoute: typeof DashboardSubscriptionsImport
+      parentRoute: typeof DashboardImport
+    }
+    '/dashboard/transactions': {
+      preLoaderRoute: typeof DashboardTransactionsImport
+      parentRoute: typeof DashboardImport
+    }
     '/_layout/': {
       preLoaderRoute: typeof LayoutIndexImport
       parentRoute: typeof LayoutImport
+    }
+    '/dashboard/': {
+      preLoaderRoute: typeof DashboardIndexImport
+      parentRoute: typeof DashboardImport
     }
   }
 }
@@ -130,7 +250,20 @@ export const routeTree = rootRoute.addChildren([
     LayoutSettingsRoute,
     LayoutIndexRoute,
   ]),
-  DashboardRoute,
+  DashboardRoute.addChildren([
+    DashboardAccountsRoute,
+    DashboardBudgetsRoute,
+    DashboardChartsRoute,
+    DashboardDebtsRoute,
+    DashboardExportRoute,
+    DashboardGoalsRoute,
+    DashboardHelpRoute,
+    DashboardImportRoute,
+    DashboardSettingsRoute,
+    DashboardSubscriptionsRoute,
+    DashboardTransactionsRoute,
+    DashboardIndexRoute,
+  ]),
   LoginRoute,
   RecoverPasswordRoute,
   ResetPasswordRoute,
