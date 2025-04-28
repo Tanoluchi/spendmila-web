@@ -8,14 +8,12 @@ from sqlmodel import Field, Relationship, SQLModel
 from .enums import SubscriptionFrequency
 
 if TYPE_CHECKING:
-    from .user import User, UserRead
-    from .currency import Currency, CurrencyRead
+    from .user import User
+    from .currency import Currency
 
 # Forward references for runtime
 User = ForwardRef("User")
-UserRead = ForwardRef("UserRead")
 Currency = ForwardRef("Currency")
-CurrencyRead = ForwardRef("CurrencyRead")
 
 
 class SubscriptionBase(SQLModel):

@@ -31,10 +31,6 @@ from .transaction import (
     IncomeCreate, ExpenseCreate, IncomeRead, ExpenseRead,
     IncomeUpdate, ExpenseUpdate
 )
-from .item import (
-    ItemBase, ItemRead, ItemCreate, ItemUpdate,
-    ItemPublic, ItemsPublic
-)
 from .currency import (
     CurrencyBase, CurrencyRead, CurrencyCreate, CurrencyUpdate,
     CurrencyPublic, CurrenciesPublic, CurrencyReadWithDetails
@@ -73,10 +69,6 @@ __all__ = [
     "TransactionPublic", "TransactionsPublic", "TransactionReadWithDetails",
     "IncomeCreate", "ExpenseCreate", "IncomeRead", "ExpenseRead",
     "IncomeUpdate", "ExpenseUpdate",
-    
-    # Item schemas
-    "ItemBase", "ItemRead", "ItemCreate", "ItemUpdate",
-    "ItemPublic", "ItemsPublic",
     
     # Currency schemas
     "CurrencyBase", "CurrencyRead", "CurrencyCreate", "CurrencyUpdate",

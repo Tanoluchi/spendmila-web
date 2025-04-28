@@ -1,14 +1,24 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { Plus } from 'lucide-react';
+import CreateBudget from '@/components/Modals/CreateBudget';
 
 function Budgets() {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  
   return (
     <div className="grid gap-6 dark:text-gray-200">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Budgets</h2>
-        <button className="bg-purple hover:bg-purple-700 text-white px-4 py-2 rounded-md">
+        <button 
+          className="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-md inline-flex items-center gap-2 z-10"
+          onClick={() => setIsModalOpen(true)}
+        >
+          <Plus size={16} />
           Create Budget
         </button>
       </div>
+      
+      <CreateBudget isOpen={isModalOpen} onOpenChange={setIsModalOpen} />
       
       <div className="bg-card rounded-lg shadow-sm p-4">
         <div className="flex justify-between items-center mb-4">

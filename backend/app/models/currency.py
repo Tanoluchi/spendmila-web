@@ -7,23 +7,18 @@ from sqlmodel import Field, Relationship, SQLModel
 from .enums import CurrencyCode
 
 if TYPE_CHECKING:
-    from .user import User, UserRead
-    from .transaction import Transaction, TransactionRead
-    from .financial_goal import FinancialGoal, FinancialGoalRead
-    from .subscription import Subscription, SubscriptionRead
-    from .debt import Debt, DebtRead
+    from .user import User
+    from .transaction import Transaction
+    from .financial_goal import FinancialGoal
+    from .subscription import Subscription
+    from .debt import Debt
 
 # Forward references for runtime
 User = ForwardRef("User")
-UserRead = ForwardRef("UserRead")
 Transaction = ForwardRef("Transaction")
-TransactionRead = ForwardRef("TransactionRead")
 FinancialGoal = ForwardRef("FinancialGoal")
-FinancialGoalRead = ForwardRef("FinancialGoalRead")
 Subscription = ForwardRef("Subscription")
-SubscriptionRead = ForwardRef("SubscriptionRead")
 Debt = ForwardRef("Debt")
-DebtRead = ForwardRef("DebtRead")
 
 
 class CurrencyBase(SQLModel):

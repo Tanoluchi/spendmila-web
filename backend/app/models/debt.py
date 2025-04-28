@@ -6,17 +6,14 @@ from pydantic import ConfigDict
 from sqlmodel import Field, Relationship, SQLModel
 
 if TYPE_CHECKING:
-    from .user import User, UserRead
-    from .payment_method import PaymentMethod, PaymentMethodRead
-    from .currency import Currency, CurrencyRead
+    from .user import User
+    from .payment_method import PaymentMethod
+    from .currency import Currency
 
 # Forward references for runtime
 User = ForwardRef("User")
-UserRead = ForwardRef("UserRead")
 PaymentMethod = ForwardRef("PaymentMethod")
-PaymentMethodRead = ForwardRef("PaymentMethodRead")
 Currency = ForwardRef("Currency")
-CurrencyRead = ForwardRef("CurrencyRead")
 
 
 class DebtBase(SQLModel):

@@ -27,7 +27,6 @@ def create_user(*, session: Session, user_create: UserCreate) -> User:
         financial_goals=[],
         subscriptions=[],
         debts=[],
-        items=[]
     )
     
     session.add(db_obj)

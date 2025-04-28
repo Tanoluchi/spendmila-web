@@ -8,26 +8,18 @@ from .enums import SubscriptionType
 
 # Cyclic imports
 if TYPE_CHECKING:
-    from .currency import Currency, CurrencyRead
-    from .transaction import Transaction, TransactionRead
-    from .financial_goal import FinancialGoal, FinancialGoalRead
-    from .subscription import Subscription, SubscriptionRead
-    from .debt import Debt, DebtRead
-    from .item import Item, ItemRead
+    from .currency import Currency
+    from .transaction import Transaction
+    from .financial_goal import FinancialGoal
+    from .subscription import Subscription
+    from .debt import Debt
 
 # Forward references for runtime
 Currency = ForwardRef("Currency")
-CurrencyRead = ForwardRef("CurrencyRead")
 Transaction = ForwardRef("Transaction")
-TransactionRead = ForwardRef("TransactionRead")
 FinancialGoal = ForwardRef("FinancialGoal")
-FinancialGoalRead = ForwardRef("FinancialGoalRead")
 Subscription = ForwardRef("Subscription")
-SubscriptionRead = ForwardRef("SubscriptionRead")
 Debt = ForwardRef("Debt")
-DebtRead = ForwardRef("DebtRead")
-Item = ForwardRef("Item")
-ItemRead = ForwardRef("ItemRead")
 
 # Base model with shared properties
 class UserBase(SQLModel):
@@ -103,7 +95,6 @@ class User(UserBase, table=True):
     financial_goals: List[FinancialGoal] = Relationship(back_populates="user")
     subscriptions: List[Subscription] = Relationship(back_populates="user")
     debts: List[Debt] = Relationship(back_populates="user")
-    items: List[Item] = Relationship(back_populates="owner")
 
 
 # Simplified public representation

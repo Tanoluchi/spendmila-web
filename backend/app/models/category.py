@@ -7,11 +7,10 @@ from sqlmodel import Field, Relationship, SQLModel
 from .enums import CategoryType
 
 if TYPE_CHECKING:
-    from .transaction import Transaction, TransactionRead
+    from .transaction import Transaction
 
 # Forward references for runtime
 Transaction = ForwardRef("Transaction")
-TransactionRead = ForwardRef("TransactionRead")
 
 
 class CategoryBase(SQLModel):

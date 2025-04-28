@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
-import { Bookmark, Edit, Trash, Plus } from 'lucide-react';
+import { useState } from 'react';
+import { Edit, Trash, Plus, Bookmark } from 'lucide-react';
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
+import { SubscriptionService, type Subscription } from '@/client/services/SubscriptionService';
 
 // Predefined subscription services
 const SUBSCRIPTION_SERVICES = [
@@ -31,51 +33,46 @@ const SUBSCRIPTION_FREQUENCIES = [
   { value: "quarterly", label: "Quarterly" },
 ];
 
-// Sample subscription data (would be replaced with actual API data)
-const SAMPLE_SUBSCRIPTIONS = [
-  {
-    id: "1",
-    service_name: "Netflix",
-    amount: 15.99,
-    frequency: "monthly",
-    next_payment_date: "2025-05-15",
-    currency_code: "USD",
-  },
-  {
-    id: "2",
-    service_name: "Spotify",
-    amount: 9.99,
-    frequency: "monthly",
-    next_payment_date: "2025-05-10",
-    currency_code: "USD",
-  },
-  {
-    id: "3",
-    service_name: "Amazon Prime",
-    amount: 139.00,
-    frequency: "yearly",
-    next_payment_date: "2025-11-23",
-    currency_code: "USD",
-  }
-];
+// Using the Subscription interface from SubscriptionService
 
 function Subscriptions() {
-  const [subscriptions, setSubscriptions] = useState(SAMPLE_SUBSCRIPTIONS);
+  const queryClient = useQueryClient();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [currentSubscription, setCurrentSubscription] = useState<any>(null);
   const [formData, setFormData] = useState({
-    service_name: "",
-    custom_service_name: "",
+    service_name: '',
+    custom_service_name: '',
     amount: 0,
-    frequency: "monthly",
+    frequency: 'monthly',
     next_payment_date: new Date().toISOString().split('T')[0],
-    currency_code: "USD",
+    currency_code: 'USD'
   });
+  
+  // Fetch subscriptions from API using SubscriptionService
+  const { data: subscriptionsData, isLoading, error } = useQuery({
+    queryKey: ['subscriptions'],
+    queryFn: async () => {
+      try {
+        const data = await SubscriptionService.getSubscriptions();
+        return { data: data.items || [], count: data.total || 0 };
+      } catch (error) {
+        console.error('Error fetching subscriptions:', error);
+        throw error;
+      }
+    },
+    retry: 1
+  });
+  
+  const subscriptions = subscriptionsData?.data || [];
+  
+  // Show error message if there was an error fetching subscriptions
+  if (error) {
+    console.error('Error fetching subscriptions:', error);
+  }
 
   // Calculate total monthly cost
   const calculateMonthlyTotal = () => {
-    return subscriptions.reduce((total, sub) => {
+    return subscriptions.reduce((total: number, sub: Subscription) => {
       let amount = sub.amount;
       if (sub.frequency === "yearly") {
         amount = amount / 12;
@@ -86,76 +83,36 @@ function Subscriptions() {
     }, 0);
   };
 
-  // Handle form input changes
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  // Open modal for creating a new subscription
-  const handleAddSubscription = () => {
-    setIsEditing(false);
-    setCurrentSubscription(null);
-    setFormData({
-      service_name: "",
-      custom_service_name: "",
-      amount: 0,
-      frequency: "monthly",
-      next_payment_date: new Date().toISOString().split('T')[0],
-      currency_code: "USD",
-    });
-    setIsModalOpen(true);
-  };
-
-  // Open modal for editing an existing subscription
+  // Handle subscription editing
   const handleEditSubscription = (subscription: any) => {
-    setIsEditing(true);
-    setCurrentSubscription(subscription);
+    console.log('Edit subscription:', subscription);
     setFormData({
       service_name: subscription.service_name,
-      custom_service_name: SUBSCRIPTION_SERVICES.includes(subscription.service_name) ? "" : subscription.service_name,
+      custom_service_name: '',
       amount: subscription.amount,
       frequency: subscription.frequency,
       next_payment_date: subscription.next_payment_date,
-      currency_code: subscription.currency_code,
+      currency_code: subscription.currency_code
     });
+    setIsEditing(true);
     setIsModalOpen(true);
   };
 
-  // Handle form submission
-  const handleSubmit = () => {
-    // Determine the final service name (either from predefined list or custom input)
-    const finalServiceName = formData.service_name === "Other" ? formData.custom_service_name : formData.service_name;
-
-    if (!finalServiceName) {
-      alert("Service name is required");
-      return;
-    }
-
-    const subscriptionData = {
-      id: isEditing ? currentSubscription.id : Date.now().toString(),
-      service_name: finalServiceName,
-      amount: Number(formData.amount),
-      frequency: formData.frequency,
-      next_payment_date: formData.next_payment_date,
-      currency_code: formData.currency_code,
-    };
-
-    if (isEditing) {
-      setSubscriptions(subscriptions.map(sub => 
-        sub.id === currentSubscription.id ? subscriptionData : sub
-      ));
-    } else {
-      setSubscriptions([...subscriptions, subscriptionData]);
-    }
-
-    setIsModalOpen(false);
-  };
-
   // Handle subscription deletion
+  const deleteSubscriptionMutation = useMutation({
+    mutationFn: (id: string) => SubscriptionService.deleteSubscription(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['subscriptions'] });
+    },
+    onError: (error) => {
+      console.error('Error deleting subscription:', error);
+      alert('Failed to delete subscription. Please try again.');
+    }
+  });
+
   const handleDeleteSubscription = (id: string) => {
     if (window.confirm("Are you sure you want to delete this subscription?")) {
-      setSubscriptions(subscriptions.filter(sub => sub.id !== id));
+      deleteSubscriptionMutation.mutate(id);
     }
   };
 
@@ -171,20 +128,106 @@ function Subscriptions() {
       frequency.charAt(0).toUpperCase() + frequency.slice(1);
   };
 
+  // Handle input changes in the modal form
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: name === 'amount' ? parseFloat(value) : value
+    }));
+  };
+
+  // Create/Update subscription mutation
+  const saveSubscriptionMutation = useMutation({
+    mutationFn: (data: any) => {
+      if (isEditing && data.id) {
+        return SubscriptionService.updateSubscription(data.id, {
+          service_name: data.service_name,
+          amount: data.amount,
+          frequency: data.frequency,
+          next_payment_date: data.next_payment_date,
+          currency_code: data.currency_code
+        });
+      } else {
+        return SubscriptionService.createSubscription({
+          service_name: data.service_name,
+          amount: data.amount,
+          frequency: data.frequency,
+          next_payment_date: data.next_payment_date,
+          currency_code: data.currency_code
+        });
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['subscriptions'] });
+      setIsModalOpen(false);
+      setIsEditing(false);
+      setFormData({
+        service_name: '',
+        custom_service_name: '',
+        amount: 0,
+        frequency: 'monthly',
+        next_payment_date: new Date().toISOString().split('T')[0],
+        currency_code: 'USD'
+      });
+    },
+    onError: (error) => {
+      console.error('Error saving subscription:', error);
+      alert(`Error: Failed to ${isEditing ? 'update' : 'create'} subscription. Please try again.`);
+    }
+  });
+
+  // Handle form submission
+  const handleSubmit = async () => {
+    try {
+      // Validate form data
+      if (!formData.service_name) {
+        alert('Please select a service');
+        return;
+      }
+      
+      if (formData.service_name === 'Other' && !formData.custom_service_name) {
+        alert('Please enter a custom service name');
+        return;
+      }
+      
+      if (!formData.amount || formData.amount <= 0) {
+        alert('Please enter a valid amount');
+        return;
+      }
+      
+      // Prepare data for API
+      const subscriptionData = {
+        ...formData,
+        service_name: formData.service_name === 'Other' ? formData.custom_service_name : formData.service_name
+      };
+      
+      // Submit using mutation
+      saveSubscriptionMutation.mutate(subscriptionData);
+    } catch (error) {
+      console.error('Error in form submission:', error);
+      alert(`Error: ${error instanceof Error ? error.message : 'Failed to process subscription'}`);
+    }
+  };
+
   return (
     <div className="grid gap-6">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold dark:text-gray-200">Subscriptions</h2>
         <button 
-          className="bg-purple hover:bg-purple-700 text-white px-4 py-2 rounded-md flex items-center gap-2"
-          onClick={handleAddSubscription}
+          className="bg-purple hover:bg-purple-700 text-white px-4 py-2 rounded-md inline-flex items-center gap-2"
+          onClick={() => setIsModalOpen(true)}
         >
           <Plus size={16} />
           Add Subscription
         </button>
       </div>
       
-      {subscriptions.length > 0 ? (
+      {isLoading ? (
+        <div className="p-8 text-center">
+          <p>Loading subscriptions...</p>
+        </div>
+      ) : subscriptions.length > 0 ? (
         <div className="bg-card rounded-lg shadow-sm overflow-hidden dark:text-gray-200">
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -198,7 +241,7 @@ function Subscriptions() {
                 </tr>
               </thead>
               <tbody>
-                {subscriptions.map((subscription) => (
+                {subscriptions.map((subscription: Subscription) => (
                   <tr key={subscription.id} className="border-t border-border">
                     <td className="px-4 py-3 text-sm">
                       <div className="flex items-center gap-2">
@@ -244,7 +287,7 @@ function Subscriptions() {
           <p className="text-muted-foreground mb-4">Add your first subscription to start tracking your expenses</p>
           <button 
             className="bg-purple hover:bg-purple-700 text-white px-4 py-2 rounded-md inline-flex items-center gap-2"
-            onClick={handleAddSubscription}
+            onClick={() => setIsModalOpen(true)}
           >
             <Plus size={16} />
             Add Subscription

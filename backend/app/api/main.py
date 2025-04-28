@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.api.routes import items, login, private, users, utils, currencies, payment_methods
+from app.api.routes import login, private, users, utils, currencies, payment_methods
 from app.api.routes import categories, transactions, financial_goals, subscriptions, debts
 from app.core.config import settings
 
@@ -8,7 +8,6 @@ api_router = APIRouter()
 api_router.include_router(login.router)
 api_router.include_router(users.router)
 api_router.include_router(utils.router)
-api_router.include_router(items.router)
 api_router.include_router(currencies.router)
 api_router.include_router(payment_methods.router)
 api_router.include_router(categories.router)

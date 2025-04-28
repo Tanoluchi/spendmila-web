@@ -7,14 +7,12 @@ from sqlmodel import Field, Relationship, SQLModel
 from .enums import PaymentMethodType
 
 if TYPE_CHECKING:
-    from .transaction import Transaction, TransactionRead
-    from .debt import Debt, DebtRead
+    from .transaction import Transaction
+    from .debt import Debt
 
 # Forward references for runtime
 Transaction = ForwardRef("Transaction")
-TransactionRead = ForwardRef("TransactionRead")
 Debt = ForwardRef("Debt")
-DebtRead = ForwardRef("DebtRead")
 
 
 class PaymentMethodBase(SQLModel):

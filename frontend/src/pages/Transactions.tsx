@@ -1,11 +1,25 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { Plus } from 'lucide-react';
+import AddTransaction from '@/components/Modals/AddTransaction';
 
 function Transactions() {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  
   return (
     <div className="grid gap-6">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold dark:text-gray-200">Transactions</h2>
+        <button 
+          className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-md inline-flex items-center gap-2 z-10"
+          onClick={() => setIsModalOpen(true)}
+        >
+          <Plus size={16} />
+          Add Transaction
+        </button>
       </div>
+      
+      <AddTransaction isOpen={isModalOpen} onOpenChange={setIsModalOpen} />
+
       
       <div className="bg-card rounded-lg shadow-sm p-4">
         <div className="flex justify-between items-center mb-4">

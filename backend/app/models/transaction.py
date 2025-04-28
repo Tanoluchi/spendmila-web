@@ -6,22 +6,6 @@ from pydantic import ConfigDict
 from sqlmodel import Field, Relationship, SQLModel, Column, String
 from sqlalchemy.orm import relationship, RelationshipProperty
 
-if TYPE_CHECKING:
-    from .user import User, UserRead
-    from .category import Category, CategoryRead
-    from .payment_method import PaymentMethod, PaymentMethodRead
-    from .currency import Currency, CurrencyRead
-
-# Forward references for runtime
-User = ForwardRef("User")
-UserRead = ForwardRef("UserRead")
-Category = ForwardRef("Category")
-CategoryRead = ForwardRef("CategoryRead")
-PaymentMethod = ForwardRef("PaymentMethod")
-PaymentMethodRead = ForwardRef("PaymentMethodRead")
-Currency = ForwardRef("Currency")
-CurrencyRead = ForwardRef("CurrencyRead")
-
 # Use a type alias for clarity if needed elsewhere, though SQLModel handles the union well
 # TransactionType = Literal["income", "expense"]
 

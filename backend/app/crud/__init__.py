@@ -3,7 +3,6 @@
 
 # Use new filenames for imports
 from .user import get_user_by_email, create_user, update_user, authenticate
-from .item import create_item, get_item, get_items_by_owner, update_item, delete_item
 from .currency import get_currency, get_currency_by_code, get_currencies, create_currency, update_currency, delete_currency
 from .category import get_category, get_categories, create_category, update_category, delete_category
 from .payment_method import get_payment_method, get_payment_methods, create_payment_method, update_payment_method, delete_payment_method

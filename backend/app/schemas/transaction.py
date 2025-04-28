@@ -116,4 +116,3 @@ class TransactionsPublic(SQLModel):
 
 class TransactionReadWithDetails(TransactionRead):
     model_config = ConfigDict(arbitrary_types_allowed=True)
-    items: List[dict] = [] 

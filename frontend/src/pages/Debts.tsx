@@ -1,14 +1,24 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { Plus } from 'lucide-react';
+import AddDebt from '@/components/Modals/AddDebt';
 
 function Debts() {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  
   return (
     <div className="grid gap-6 dark:text-gray-200">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Debts</h2>
-        <button className="bg-purple hover:bg-purple-700 text-white px-4 py-2 rounded-md">
+        <button 
+          className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md inline-flex items-center gap-2 z-10"
+          onClick={() => setIsModalOpen(true)}
+        >
+          <Plus size={16} />
           Add Debt
         </button>
       </div>
+      
+      <AddDebt isOpen={isModalOpen} onOpenChange={setIsModalOpen} />
       
       <div className="bg-card rounded-lg shadow-sm p-4">
         <h3 className="text-lg font-medium mb-4">Debt Overview</h3>

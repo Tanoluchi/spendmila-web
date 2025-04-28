@@ -24,7 +24,6 @@ from .transaction import Transaction, TransactionBase, Income, Expense
 from .financial_goal import FinancialGoal
 from .subscription import Subscription
 from .debt import Debt
-from .item import Item
 
 # Rebuild the base models
 Currency.model_rebuild()
@@ -35,7 +34,6 @@ Transaction.model_rebuild()
 FinancialGoal.model_rebuild()
 Subscription.model_rebuild()
 Debt.model_rebuild()
-Item.model_rebuild()
 
 # Export commonly used models and types
 __all__ = [
@@ -64,5 +62,4 @@ __all__ = [
     "FinancialGoal",
     "Subscription",
     "Debt",
-    "Item"
 ] 

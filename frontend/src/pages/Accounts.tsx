@@ -1,14 +1,24 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { Plus } from 'lucide-react';
+import AddAccount from '@/components/Modals/AddAccount';
 
 function Accounts() {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  
   return (
     <div className="grid gap-6">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold dark:text-gray-200">Accounts</h2>
-        <button className="bg-purple hover:bg-purple-700 text-white px-4 py-2 rounded-md">
+        <button 
+          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md inline-flex items-center gap-2 z-10"
+          onClick={() => setIsModalOpen(true)}
+        >
+          <Plus size={16} />
           Add Account
         </button>
       </div>
+      
+      <AddAccount isOpen={isModalOpen} onOpenChange={setIsModalOpen} />
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 dark:text-gray-200">
         {/* Sample account cards - would be replaced with actual data */}
