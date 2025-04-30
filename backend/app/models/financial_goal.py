@@ -1,17 +1,21 @@
 import uuid
 import datetime
-from typing import TYPE_CHECKING, Optional, ForwardRef
+from typing import TYPE_CHECKING, Optional, ForwardRef, List
 
 from sqlmodel import Field, Relationship, SQLModel
 from pydantic import ConfigDict
 
+from .enums import FinancialGoalStatus, FinancialGoalType
+
 if TYPE_CHECKING:
     from .user import User
     from .currency import Currency
+    from .transaction import Transaction
 
 # Forward references for runtime
 User = ForwardRef("User")
 Currency = ForwardRef("Currency")
+Transaction = ForwardRef("Transaction")
 
 
 class FinancialGoalBase(SQLModel):
@@ -21,6 +25,11 @@ class FinancialGoalBase(SQLModel):
     target_amount: float = Field(gt=0)
     current_amount: float = Field(default=0, ge=0)
     deadline: Optional[datetime.date] = Field(default=None, index=True)
+    status: FinancialGoalStatus = Field(default=FinancialGoalStatus.ACTIVE, index=True)
+    goal_type: FinancialGoalType = Field(default=FinancialGoalType.SAVINGS, index=True)
+    description: Optional[str] = Field(default=None, max_length=255)
+    icon: Optional[str] = Field(default=None, max_length=255)  # Icon for the goal
+    color: Optional[str] = Field(default=None, max_length=50)  # Color code for the goal
 
     # Foreign Keys
     user_id: uuid.UUID = Field(foreign_key="user.id", index=True)
@@ -28,6 +37,7 @@ class FinancialGoalBase(SQLModel):
 
 
 class FinancialGoal(FinancialGoalBase, table=True):
+    __tablename__ = "financial_goal"
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     id: uuid.UUID = Field(
@@ -37,7 +47,8 @@ class FinancialGoal(FinancialGoalBase, table=True):
     # Relationships
     user: User = Relationship(back_populates="financial_goals")
     currency: Currency = Relationship(back_populates="financial_goals")
+    transactions: List["Transaction"] = Relationship(back_populates="financial_goal")
 
 
 # Update forward references at the end of the file
-FinancialGoal.model_rebuild() 
+FinancialGoal.model_rebuild()

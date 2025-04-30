@@ -40,7 +40,6 @@ class CurrencyPublic(CurrencyBase):
 class CurrenciesPublic(SQLModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     data: List[CurrencyPublic]
-    count: int
 
 
 class CurrencyReadWithDetails(CurrencyRead):

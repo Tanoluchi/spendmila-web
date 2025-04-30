@@ -3,7 +3,8 @@ from typing import Sequence
 
 from sqlmodel import Session, select
 
-from app.models.debt import Debt, DebtCreate, DebtUpdate
+from app.models.debt import Debt
+from app.schemas.debt import DebtCreate, DebtUpdate
 
 
 def get_debt(

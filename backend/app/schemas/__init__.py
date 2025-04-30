@@ -14,8 +14,7 @@ from .financial_goal import (
 )
 from .debt import (
     DebtBase, DebtRead, DebtCreate, DebtUpdate,
-    DebtPublic, DebtsPublic, DebtReadWithDetails,
-    DebtAddPayment
+    DebtPublic, DebtReadWithDetails, DebtAddPayment
 )
 from .subscription import (
     SubscriptionBase, SubscriptionRead, SubscriptionCreate, SubscriptionUpdate,
@@ -27,9 +26,7 @@ from .payment_method import (
 )
 from .transaction import (
     TransactionBase, TransactionRead, TransactionCreate, TransactionUpdate,
-    TransactionPublic, TransactionsPublic, TransactionReadWithDetails,
-    IncomeCreate, ExpenseCreate, IncomeRead, ExpenseRead,
-    IncomeUpdate, ExpenseUpdate
+    TransactionPublic, TransactionsPublic, TransactionReadWithDetails
 )
 from .currency import (
     CurrencyBase, CurrencyRead, CurrencyCreate, CurrencyUpdate,
@@ -67,8 +64,6 @@ __all__ = [
     # Transaction schemas
     "TransactionBase", "TransactionRead", "TransactionCreate", "TransactionUpdate",
     "TransactionPublic", "TransactionsPublic", "TransactionReadWithDetails",
-    "IncomeCreate", "ExpenseCreate", "IncomeRead", "ExpenseRead",
-    "IncomeUpdate", "ExpenseUpdate",
     
     # Currency schemas
     "CurrencyBase", "CurrencyRead", "CurrencyCreate", "CurrencyUpdate",

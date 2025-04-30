@@ -3,7 +3,8 @@ from typing import Sequence
 
 from sqlmodel import Session, select
 
-from app.models.subscription import Subscription, SubscriptionCreate, SubscriptionUpdate
+from app.models.subscription import Subscription
+from app.schemas.subscription import SubscriptionCreate, SubscriptionUpdate
 
 
 def get_subscription(

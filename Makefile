@@ -54,6 +54,14 @@ bash-backend: ## Access the bash shell inside the backend container
 test: ## Run tests inside the backend container (adjust path/command if needed)
 	$(COMPOSE) exec backend pytest app/tests
 
+.PHONY: dump-data-crud
+dump-data-crud: ## Dump data into the database using CRUD operations
+	$(COMPOSE) exec backend python app/dump_data_crud.py --reset
+
+.PHONY: logs
+logs: ## Show logs
+	$(COMPOSE) logs -f
+
 .PHONY: makemigrations
 makemigrations: ## Generate Alembic migration with message: make makemigrations m="Your message"
 	@if [ -z "$(m)" ]; then \

@@ -12,6 +12,7 @@ if TYPE_CHECKING:
     from .financial_goal import FinancialGoal
     from .subscription import Subscription
     from .debt import Debt
+    from .account import Account
 
 # Forward references for runtime
 User = ForwardRef("User")
@@ -19,6 +20,7 @@ Transaction = ForwardRef("Transaction")
 FinancialGoal = ForwardRef("FinancialGoal")
 Subscription = ForwardRef("Subscription")
 Debt = ForwardRef("Debt")
+Account = ForwardRef("Account")
 
 
 class CurrencyBase(SQLModel):
@@ -42,6 +44,7 @@ class Currency(CurrencyBase, table=True):
     financial_goals: List["FinancialGoal"] = Relationship(back_populates="currency", sa_relationship_kwargs={"lazy": "selectin"})
     subscriptions: List["Subscription"] = Relationship(back_populates="currency", sa_relationship_kwargs={"lazy": "selectin"})
     debts: List["Debt"] = Relationship(back_populates="currency", sa_relationship_kwargs={"lazy": "selectin"})
+    accounts: List["Account"] = Relationship(back_populates="currency", sa_relationship_kwargs={"lazy": "selectin"})
 
     def __init__(self, **data):
         super().__init__(**data)
@@ -50,34 +53,7 @@ class Currency(CurrencyBase, table=True):
         self.financial_goals = []
         self.subscriptions = []
         self.debts = []
-
-
-class CurrencyCreate(CurrencyBase):
-    model_config = ConfigDict(arbitrary_types_allowed=True)
-    pass
-
-
-class CurrencyRead(CurrencyBase):
-    model_config = ConfigDict(arbitrary_types_allowed=True)
-    id: uuid.UUID
-
-
-class CurrencyReadWithDetails(CurrencyRead):
-    model_config = ConfigDict(arbitrary_types_allowed=True)
-    users: Optional[List[Dict[str, Any]]] = None
-    transactions: Optional[List[Dict[str, Any]]] = None
-    financial_goals: Optional[List[Dict[str, Any]]] = None
-    subscriptions: Optional[List[Dict[str, Any]]] = None
-    debts: Optional[List[Dict[str, Any]]] = None
-
-
-class CurrencyUpdate(SQLModel):
-    model_config = ConfigDict(arbitrary_types_allowed=True)
-    code: Optional[CurrencyCode] = None
-    symbol: Optional[str] = None
-    name: Optional[str] = None
+        self.accounts = []
 
 # Update forward references at the end of the file
 Currency.model_rebuild()
-CurrencyRead.model_rebuild()
-CurrencyReadWithDetails.model_rebuild()

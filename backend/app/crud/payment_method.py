@@ -3,7 +3,8 @@ from typing import Sequence
 
 from sqlmodel import Session, select
 
-from app.models.payment_method import PaymentMethod, PaymentMethodCreate, PaymentMethodUpdate
+from app.models.payment_method import PaymentMethod
+from app.schemas.payment_method import PaymentMethodCreate, PaymentMethodUpdate
 
 
 def get_payment_method(*, session: Session, payment_method_id: uuid.UUID) -> PaymentMethod | None:
@@ -16,10 +17,13 @@ def get_payment_methods(*, session: Session, skip: int = 0, limit: int = 100) ->
     statement = select(PaymentMethod).offset(skip).limit(limit)
     return session.exec(statement).all()
 
-def create_payment_method(*, session: Session, payment_method_in: PaymentMethodCreate) -> PaymentMethod:
+def create_payment_method(*, session: Session, payment_method_in: PaymentMethodCreate, user_id: uuid.UUID) -> PaymentMethod:
     """Create a new payment method."""
     # Consider adding user_id if they become user-specific
-    db_pm = PaymentMethod.model_validate(payment_method_in)
+    payment_method_data = payment_method_in.model_dump()
+    payment_method_data["user_id"] = user_id
+
+    db_pm = PaymentMethod.model_validate(payment_method_data)
     session.add(db_pm)
     session.commit()
     session.refresh(db_pm)

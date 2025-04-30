@@ -20,6 +20,7 @@ class DebtBase(SQLModel):
     type: DebtType
     status: DebtStatus = Field(default=DebtStatus.PENDING)
     is_active: bool = True
+    installment_count: int = Field(default=1, ge=1)
 
 
 class DebtRead(DebtBase):
@@ -27,12 +28,15 @@ class DebtRead(DebtBase):
     id: uuid.UUID
     user_id: uuid.UUID
     currency_id: uuid.UUID
+    account_id: Optional[uuid.UUID] = None
     currency: Optional[dict] = None
+    account: Optional[dict] = None
 
 
 class DebtCreate(DebtBase):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     currency_id: uuid.UUID
+    account_id: Optional[uuid.UUID] = None
 
 
 class DebtUpdate(SQLModel):
@@ -47,19 +51,15 @@ class DebtUpdate(SQLModel):
     status: Optional[DebtStatus] = None
     is_active: Optional[bool] = None
     currency_id: Optional[uuid.UUID] = None
+    account_id: Optional[uuid.UUID] = None
+    installment_count: Optional[int] = Field(default=None, ge=1)
 
 
 class DebtPublic(DebtBase):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     id: uuid.UUID
     currency: Optional[dict] = None
-
-
-class DebtsPublic(SQLModel):
-    model_config = ConfigDict(arbitrary_types_allowed=True)
-    data: List[DebtPublic]
-    count: int
-
+    account: Optional[dict] = None
 
 class DebtReadWithDetails(DebtRead):
     model_config = ConfigDict(arbitrary_types_allowed=True)

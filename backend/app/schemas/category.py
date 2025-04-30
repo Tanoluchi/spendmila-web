@@ -12,7 +12,7 @@ class CategoryBase(SQLModel):
     
     name: str = Field(max_length=255)
     description: Optional[str] = Field(default=None, max_length=255)
-    type: CategoryType
+    category_type: CategoryType
     icon: Optional[str] = Field(default=None, max_length=255)
     color: Optional[str] = Field(default=None, max_length=7)
     is_active: bool = True
@@ -21,7 +21,6 @@ class CategoryBase(SQLModel):
 class CategoryRead(CategoryBase):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     id: uuid.UUID
-    user_id: uuid.UUID
 
 
 class CategoryCreate(CategoryBase):
@@ -33,7 +32,7 @@ class CategoryUpdate(SQLModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     name: Optional[str] = Field(default=None, max_length=255)
     description: Optional[str] = Field(default=None, max_length=255)
-    type: Optional[CategoryType] = None
+    category_type: Optional[CategoryType] = None
     icon: Optional[str] = Field(default=None, max_length=255)
     color: Optional[str] = Field(default=None, max_length=7)
     is_active: Optional[bool] = None

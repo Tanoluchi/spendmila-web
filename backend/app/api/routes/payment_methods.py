@@ -28,7 +28,11 @@ def create_payment_method(
     """
     # Currently, payment methods are global. If they become user-specific,
     # the create function in crud would need the user_id.
-    return payment_method.create_payment_method(session=session, payment_method_in=pm_in)
+    return payment_method.create_payment_method(
+        session=session, 
+        payment_method_in=pm_in, 
+        user_id=current_user.id
+    )
 
 
 @router.get("/", response_model=Sequence[PaymentMethodRead])

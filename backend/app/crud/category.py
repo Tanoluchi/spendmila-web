@@ -3,7 +3,8 @@ from typing import Sequence
 
 from sqlmodel import Session, select
 
-from app.models.category import Category, CategoryCreate, CategoryUpdate
+from app.models.category import Category
+from app.schemas.category import CategoryCreate, CategoryUpdate
 # Optional: Import CategoryType for filtering
 # from app.models.enums import CategoryType
 

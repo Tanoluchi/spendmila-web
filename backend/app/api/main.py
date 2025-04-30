@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 
 from app.api.routes import login, private, users, utils, currencies, payment_methods
-from app.api.routes import categories, transactions, financial_goals, subscriptions, debts
+from app.api.routes import categories, transactions, financial_goals, subscriptions, debts, accounts
 from app.core.config import settings
 
 api_router = APIRouter()
@@ -15,6 +15,7 @@ api_router.include_router(transactions.router)
 api_router.include_router(financial_goals.router)
 api_router.include_router(subscriptions.router)
 api_router.include_router(debts.router)
+api_router.include_router(accounts.router)
 
 
 if settings.ENVIRONMENT == "local":

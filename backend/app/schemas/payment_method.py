@@ -12,7 +12,7 @@ class PaymentMethodBase(SQLModel):
     
     name: str = Field(max_length=255)
     description: Optional[str] = Field(default=None, max_length=255)
-    type: PaymentMethodType
+    payment_method_type: PaymentMethodType
     is_active: bool = True
 
 
@@ -31,7 +31,7 @@ class PaymentMethodUpdate(SQLModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     name: Optional[str] = Field(default=None, max_length=255)
     description: Optional[str] = Field(default=None, max_length=255)
-    type: Optional[PaymentMethodType] = None
+    payment_method_type: Optional[PaymentMethodType] = None
     is_active: Optional[bool] = None
 
 

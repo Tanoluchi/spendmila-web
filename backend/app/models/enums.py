@@ -84,4 +84,3 @@ class TransactionType(str, Enum):
     """Type of transaction."""
     INCOME = "income"
     EXPENSE = "expense"
-    TRANSFER = "transfer"
