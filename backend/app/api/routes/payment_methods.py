@@ -37,20 +37,20 @@ def create_payment_method(
 
 @router.get("/", response_model=Sequence[PaymentMethodRead])
 def read_payment_methods(
-    session: SessionDep, current_user: CurrentUser, skip: int = 0, limit: int = 100
+    session: SessionDep
 ) -> Any:
     """
     Retrieve payment methods.
     (Requires authenticated user)
     """
     # Currently retrieves all. Add filtering by user if they become user-specific.
-    pms = payment_method.get_payment_methods(session=session, skip=skip, limit=limit)
+    pms = payment_method.get_payment_methods(session=session)
     return pms
 
 
 @router.get("/{pm_id}", response_model=PaymentMethodRead)
 def read_payment_method_by_id(
-    session: SessionDep, current_user: CurrentUser, pm_id: uuid.UUID
+    session: SessionDep, pm_id: uuid.UUID
 ) -> Any:
     """
     Get a specific payment method by ID.

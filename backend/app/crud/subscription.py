@@ -18,14 +18,12 @@ def get_subscription(
 
 
 def get_subscriptions_by_user(
-    *, session: Session, user_id: uuid.UUID, skip: int = 0, limit: int = 100
+    *, session: Session, user_id: uuid.UUID
 ) -> Sequence[Subscription]:
     """Get multiple subscriptions for a specific user."""
     statement = (
         select(Subscription)
         .where(Subscription.user_id == user_id)
-        .offset(skip)
-        .limit(limit)
     )
     return session.exec(statement).all()
 

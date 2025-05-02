@@ -6,7 +6,6 @@ from pydantic import ConfigDict
 from sqlmodel import Field, SQLModel
 
 from app.models.enums import SubscriptionStatus, SubscriptionFrequency
-from app.schemas.user import UserRead
 from app.schemas.currency import CurrencyRead
 from app.schemas.account import AccountRead
 
@@ -67,7 +66,6 @@ class SubscriptionsPublic(SQLModel):
 
 class SubscriptionReadWithDetails(SubscriptionRead):
     model_config = ConfigDict(arbitrary_types_allowed=True)
-    user: Optional[UserRead] = None
     currency: Optional[CurrencyRead] = None
     account: Optional[AccountRead] = None
     days_until_payment: Optional[int] = None

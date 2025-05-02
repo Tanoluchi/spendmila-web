@@ -28,14 +28,14 @@ def create_currency(
 
 @router.get("/", response_model=Sequence[CurrencyRead])
 def read_currencies(
-    session: SessionDep, skip: int = 0, limit: int = 100
+    session: SessionDep
 ) -> Any:
     """
     Retrieve all currencies. (No auth required? Or add dependency?)
     Consider if this should be restricted or open.
     """
     # Depending on requirements, might add current_user dependency
-    currencies = currency.get_currencies(session=session, skip=skip, limit=limit)
+    currencies = currency.get_currencies(session=session)
     return currencies
 
 

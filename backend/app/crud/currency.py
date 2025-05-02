@@ -16,9 +16,9 @@ def get_currency_by_code(*, session: Session, code: str) -> Currency | None:
     statement = select(Currency).where(Currency.code == code)
     return session.exec(statement).first()
 
-def get_currencies(*, session: Session, skip: int = 0, limit: int = 100) -> Sequence[Currency]:
+def get_currencies(*, session: Session) -> Sequence[Currency]:
     """Get multiple currencies."""
-    statement = select(Currency).offset(skip).limit(limit)
+    statement = select(Currency)
     return session.exec(statement).all()
 
 def create_currency(*, session: Session, currency_in: CurrencyCreate) -> Currency:

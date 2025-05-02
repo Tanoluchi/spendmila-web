@@ -199,6 +199,9 @@ export class UsersService {
     return __request(OpenAPI, {
       method: "GET",
       url: "/api/v1/users/me",
+      errors: {
+        422: "Validation Error",
+      },
     })
   }
 
@@ -212,6 +215,9 @@ export class UsersService {
     return __request(OpenAPI, {
       method: "DELETE",
       url: "/api/v1/users/me",
+      errors: {
+        422: "Validation Error",
+      },
     })
   }
 

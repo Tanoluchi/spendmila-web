@@ -1,6 +1,6 @@
-from typing import Any, List
+from typing import Any, Sequence
 import uuid
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session
 
 from app.api import deps
@@ -10,7 +10,6 @@ from app.schemas.account import (
     AccountCreate,
     AccountRead,
     AccountUpdate,
-    AccountsPublic,
     AccountReadWithDetails,
 )
 
@@ -21,23 +20,19 @@ router = APIRouter(
 )
 
 
-@router.get("/", response_model=AccountsPublic)
+@router.get("/", response_model=Sequence[AccountRead])
 def get_accounts(
     db: Session = Depends(deps.get_db),
     current_user: User = Depends(deps.get_current_user),
-    skip: int = 0,
-    limit: int = 100,
-    type: str = Query(None, description="Filter by account type (bank, digital, cash, other)"),
 ) -> Any:
     """
     Retrieve accounts for the current user.
     Optionally filter by account type.
     """
     accounts = account_crud.get_accounts(
-        db=db, user_id=current_user.id, skip=skip, limit=limit, type=type
+        db=db, user_id=current_user.id
     )
-    count = account_crud.count_accounts(db=db, user_id=current_user.id, type=type)
-    return {"data": accounts, "count": count}
+    return accounts
 
 
 @router.post("/", response_model=AccountRead, status_code=status.HTTP_201_CREATED)

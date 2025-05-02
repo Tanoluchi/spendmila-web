@@ -10,8 +10,17 @@ export interface Subscription {
   frequency: string;
   next_payment_date: string;
   currency_code: string;
+  status?: string;
+  icon?: string;
+  color?: string;
+  description?: string;
+  reminder_days?: number;
+  user_id?: string;
+  currency_id: string;
+  account_id?: string;
 }
 
+// This interface is kept for backward compatibility
 export interface SubscriptionsResponse {
   items: Subscription[];
   total: number;
@@ -22,16 +31,20 @@ export interface CreateSubscriptionRequest {
   amount: number;
   frequency: string;
   next_payment_date: string;
-  currency_code: string;
+  description?: string;
+  icon?: string;
+  color?: string;
+  currency_id: string;
+  account_id?: string;
 }
 
 export class SubscriptionService {
   /**
-   * Get all subscriptions
-   * @returns SubscriptionsResponse Successful Response
+   * Get all subscriptions for the current user
+   * @returns Subscription[] Successful Response
    * @throws ApiError
    */
-  public static getSubscriptions(): CancelablePromise<SubscriptionsResponse> {
+  public static getSubscriptions(): CancelablePromise<Subscription[]> {
     return __request(OpenAPI, {
       method: "GET",
       url: "/api/v1/subscriptions/",
@@ -73,7 +86,7 @@ export class SubscriptionService {
     data: CreateSubscriptionRequest
   ): CancelablePromise<Subscription> {
     return __request(OpenAPI, {
-      method: "PUT",
+      method: "PATCH",
       url: `/api/v1/subscriptions/${id}`,
       body: data,
       mediaType: "application/json",

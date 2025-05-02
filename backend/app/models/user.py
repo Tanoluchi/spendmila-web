@@ -36,7 +36,7 @@ class UserBase(SQLModel):
     is_superuser: bool = False
     subscription_type: SubscriptionType = Field(default=SubscriptionType.FREE)
     # Foreign key for default currency
-    default_currency_id: Optional[uuid.UUID] = Field(default=None, foreign_key="currency.id")
+    default_currency_id: uuid.UUID = Field(default=None, foreign_key="currency.id")
 
 # Main database model
 class User(UserBase, table=True):
@@ -48,7 +48,7 @@ class User(UserBase, table=True):
     hashed_password: str = Field(nullable=False)
 
     # Relationships
-    default_currency: Optional[Currency] = Relationship(back_populates="users")
+    default_currency: Currency = Relationship(back_populates="users")
     transactions: List[Transaction] = Relationship(back_populates="user")
     financial_goals: List[FinancialGoal] = Relationship(back_populates="user")
     subscriptions: List[Subscription] = Relationship(back_populates="user")

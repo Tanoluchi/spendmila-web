@@ -36,8 +36,6 @@ class TransactionRead(TransactionBase):
     financial_goal: Optional[FinancialGoalRead] = None
     debt: Optional[DebtRead] = None
     account: Optional[AccountRead] = None
-    installments: Optional[bool] = None
-    installment_count: Optional[int] = None
 
 
 class TransactionCreate(TransactionBase):
@@ -49,8 +47,6 @@ class TransactionCreate(TransactionBase):
     financial_goal_id: Optional[uuid.UUID] = None
     debt_id: Optional[uuid.UUID] = None
     account_id: Optional[uuid.UUID] = None
-    installments: Optional[bool] = Field(default=False)
-    installment_count: Optional[int] = None
 
 
 class TransactionUpdate(SQLModel):
@@ -69,7 +65,6 @@ class TransactionUpdate(SQLModel):
     account_id: Optional[uuid.UUID] = None
 
 
-
 class TransactionPublic(TransactionBase):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     id: uuid.UUID
@@ -82,12 +77,21 @@ class TransactionPublic(TransactionBase):
     account: Optional[AccountRead] = None
 
 
-
 class TransactionsPublic(SQLModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     data: List[TransactionPublic]
-    count: int
 
 
 class TransactionReadWithDetails(TransactionRead):
     model_config = ConfigDict(arbitrary_types_allowed=True)
+
+
+class PaginatedTransactionResponse(SQLModel):
+    """Response model for paginated transactions"""
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+    
+    items: List[TransactionReadWithDetails]
+    total: int
+    page: int
+    page_size: int
+    total_pages: int

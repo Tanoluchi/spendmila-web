@@ -63,12 +63,12 @@ def clear_existing_data(session: Session) -> None:
         logger.info(f"Deleting data for user: {user.email}")
         
         # Delete transactions
-        transactions = transaction_crud.get_transactions(session=session, user_id=user.id, limit=1000)
+        transactions = transaction_crud.get_transactions(session=session, user_id=user.id)
         for transaction in transactions:
             transaction_crud.delete_transaction(session=session, db_transaction=transaction)
         
         # Delete accounts
-        accounts = account_crud.get_accounts(db=session, user_id=user.id, limit=1000)
+        accounts = account_crud.get_accounts(db=session, user_id=user.id)
         for account in accounts:
             account_crud.delete_account(db=session, account_id=account.id)
         
@@ -148,9 +148,25 @@ def create_test_users(session: Session) -> None:
     """Create test users."""
     logger.info("Creating test users...")
     
+    # Ensure USD currency exists
+    usd_currency_id = created_ids["currencies"].get("USD")
+    if not usd_currency_id:
+        logger.error("USD currency not found. Make sure to run create_test_currencies first.")
+        return
+    
     users = [
-        {"email": "john.doe@example.com", "password": "password123", "full_name": "John Doe"},
-        {"email": "jane.smith@example.com", "password": "password123", "full_name": "Jane Smith"},
+        {
+            "email": "john.doe@example.com", 
+            "password": "password123", 
+            "full_name": "John Doe",
+            "default_currency_id": created_ids["currencies"]["USD"]
+        },
+        {
+            "email": "jane.smith@example.com", 
+            "password": "password123", 
+            "full_name": "Jane Smith",
+            "default_currency_id": created_ids["currencies"]["EUR"]
+        },
     ]
     
     for user_data in users:
@@ -158,6 +174,11 @@ def create_test_users(session: Session) -> None:
         existing = crud.get_user_by_email(session=session, email=user_data["email"])
         if existing:
             created_ids["users"][user_data["email"]] = existing.id
+            # Update default currency if it's not set
+            if not existing.default_currency_id:
+                existing.default_currency_id = user_data["default_currency_id"]
+                session.add(existing)
+                session.commit()
             continue
             
         user = UserCreate(**user_data)
@@ -203,10 +224,10 @@ def create_test_accounts(session: Session) -> None:
     logger.info("Creating test accounts...")
     
     accounts = [
-        {"name": "Checking Account", "description": "Primary checking", "balance": 2500.00, "currency_code": "USD", "type": "bank"},
-        {"name": "Savings Account", "description": "Emergency fund", "balance": 10000.00, "currency_code": "USD", "type": "bank"},
-        {"name": "Investment Account", "description": "Stocks and bonds", "balance": 15000.00, "currency_code": "USD", "type": "other"},
-        {"name": "Euro Account", "description": "Euro savings", "balance": 5000.00, "currency_code": "EUR", "type": "bank"},
+        {"name": "Checking Account", "description": "Primary checking", "balance": 2500.00, "currency_code": "USD", "account_type": "bank"},
+        {"name": "Savings Account", "description": "Emergency fund", "balance": 10000.00, "currency_code": "USD", "account_type": "bank"},
+        {"name": "Investment Account", "description": "Stocks and bonds", "balance": 15000.00, "currency_code": "USD", "account_type": "other"},
+        {"name": "Euro Account", "description": "Euro savings", "balance": 5000.00, "currency_code": "EUR", "account_type": "bank"},
     ]
     
     for account_data in accounts:
@@ -247,7 +268,7 @@ def create_test_debts(session: Session) -> None:
             "interest_rate": 4.5,
             "due_date": datetime.date.today().replace(day=15),
             "currency_code": "USD",
-            "type": "auto",
+            "debt_type": "auto",
             "status": "in_progress",
             "installment_count": 36,
             # Campos adicionales requeridos por el modelo Debt
@@ -263,7 +284,7 @@ def create_test_debts(session: Session) -> None:
             "interest_rate": 5.0,
             "due_date": datetime.date.today().replace(day=1),
             "currency_code": "USD",
-            "type": "student",
+            "debt_type": "student",
             "status": "in_progress",
             "installment_count": 60,
             # Campos adicionales requeridos por el modelo Debt

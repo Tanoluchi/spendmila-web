@@ -19,7 +19,7 @@ class DebtBase(SQLModel):
     remaining_amount: float = Field(default=0)
     interest_rate: Optional[float] = Field(default=None, ge=0)
     due_date: date
-    type: DebtType
+    debt_type: DebtType
     status: DebtStatus = Field(default=DebtStatus.PENDING)
     is_active: bool = True
     installment_count: int = Field(default=1, ge=1)
@@ -49,7 +49,7 @@ class DebtUpdate(SQLModel):
     remaining_amount: Optional[float] = None
     interest_rate: Optional[float] = Field(default=None, ge=0)
     due_date: Optional[date] = None
-    type: Optional[DebtType] = None
+    debt_type: Optional[DebtType] = None
     status: Optional[DebtStatus] = None
     is_active: Optional[bool] = None
     currency_id: Optional[uuid.UUID] = None

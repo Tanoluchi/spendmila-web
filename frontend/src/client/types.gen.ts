@@ -46,6 +46,7 @@ export type UserPublic = {
   is_superuser?: boolean
   full_name?: string | null
   id: string
+  default_currency_id: string
 }
 
 export type UserRegister = {

@@ -19,22 +19,13 @@ def get_account_by_name(db: Session, user_id: uuid.UUID, name: str) -> Optional[
 
 
 def get_accounts(
-    db: Session, user_id: uuid.UUID, skip: int = 0, limit: int = 100
+    db: Session, user_id: uuid.UUID
 ) -> List[Account]:
-    """Get all accounts for a user with pagination"""
+    """Get all accounts for a user"""
     return db.exec(
         select(Account)
         .where(Account.user_id == user_id)
-        .offset(skip)
-        .limit(limit)
     ).all()
-
-
-def count_accounts(db: Session, user_id: uuid.UUID) -> int:
-    """Count total accounts for a user"""
-    return db.exec(
-        select(Account).where(Account.user_id == user_id)
-    ).all().count()
 
 
 def create_account(db: Session, account: AccountCreate, user_id: uuid.UUID) -> Account:

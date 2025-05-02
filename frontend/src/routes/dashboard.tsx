@@ -12,7 +12,7 @@ export const Route = createFileRoute("/dashboard")({
       if (!isLoggedIn()) {
         throw redirect({
           to: "/login",
-        });
+        })
       }
     },
   });

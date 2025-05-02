@@ -34,13 +34,13 @@ def create_subscription(
 
 @router.get("/", response_model=Sequence[SubscriptionRead])
 def read_subscriptions(
-    session: SessionDep, current_user: CurrentUser, skip: int = 0, limit: int = 100
+    session: SessionDep, current_user: CurrentUser
 ) -> Any:
     """
     Retrieve subscriptions for the current user.
     """
     subscriptions = crud_subscription.get_subscriptions_by_user(
-        session=session, user_id=current_user.id, skip=skip, limit=limit
+        session=session, user_id=current_user.id
     )
     return subscriptions
 

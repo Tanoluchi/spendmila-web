@@ -5,9 +5,15 @@ import { ThemeToggle } from '@/components/ThemeToggle';
 import AddTransaction from '@/components/Modals/AddTransaction';
 import type { UserPublic } from "@/client";
 import { Plus } from 'lucide-react';
+import { useMatchRoute } from '@tanstack/react-router';
 
 const DashboardHeader = ({ currentUser }: { currentUser: UserPublic | null }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const matchRoute = useMatchRoute();
+  
+  // Check if the current route is the Transactions page
+  const isTransactionsPage = matchRoute({ to: "/dashboard/transactions" });
+  
   return (
     <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
       <div className="flex items-center gap-3">
@@ -19,13 +25,15 @@ const DashboardHeader = ({ currentUser }: { currentUser: UserPublic | null }) =>
       </div>
       <div className="flex mt-4 md:mt-0 gap-4 items-center">
         <ThemeToggle />
-        <button 
-          className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-md inline-flex items-center gap-2 z-10"
-          onClick={() => setIsModalOpen(true)}
-        >
-          <Plus size={16} />
-          Add Transaction
-        </button>
+        {!isTransactionsPage && (
+          <button 
+            className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-md inline-flex items-center gap-2 z-10"
+            onClick={() => setIsModalOpen(true)}
+          >
+            <Plus size={16} />
+            Add Transaction
+          </button>
+        )}
         <AddTransaction isOpen={isModalOpen} onOpenChange={setIsModalOpen} />
         <Avatar className="h-10 w-10 border border-border">
           <div className="w-full h-full flex items-center justify-center bg-purple-100 text-purple-600 font-medium">

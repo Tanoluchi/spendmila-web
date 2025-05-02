@@ -1,8 +1,10 @@
 import uuid
-from typing import TYPE_CHECKING, Optional, ForwardRef, List, Dict, Any, Literal
+from typing import TYPE_CHECKING, Optional, ForwardRef, List
 
 from pydantic import ConfigDict
 from sqlmodel import Field, Relationship, SQLModel
+
+from .enums import AccountType
 
 if TYPE_CHECKING:
     from .user import User
@@ -18,15 +20,12 @@ Transaction = ForwardRef("Transaction")
 Debt = ForwardRef("Debt")
 Subscription = ForwardRef("Subscription")
 
-# Account types as per UML diagram
-AccountType = Literal["bank", "digital", "cash", "other"]
-
 
 class AccountBase(SQLModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     name: str = Field(index=True, max_length=150)
-    type: str = Field(index=True)  # "bank", "digital", "cash", "other" as per UML diagram
+    account_type: AccountType = Field(index=True)
     balance: float = Field(default=0.0)
     institution: Optional[str] = Field(default=None, max_length=150)
     icon: Optional[str] = Field(default=None, max_length=255)  # Icon for the account

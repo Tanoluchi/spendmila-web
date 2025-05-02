@@ -1,5 +1,5 @@
 import uuid
-from typing import Any, Sequence
+from typing import Any, Sequence, List
 from decimal import Decimal # For add_saving amount
 
 from fastapi import APIRouter, Depends, HTTPException, Body
@@ -13,6 +13,8 @@ from app.schemas.financial_goal import (
     FinancialGoalReadWithDetails,
     FinancialGoalUpdate,
     FinancialGoalAddSaving,
+    format_financial_goal_for_response,
+    format_financial_goals_for_response,
 )
 from app.schemas.user import Message
 
@@ -25,27 +27,29 @@ def create_financial_goal(
     session: SessionDep,
     current_user: CurrentUser,
     goal_in: FinancialGoalCreate,
-) -> FinancialGoal:
+) -> dict:
     """
     Create a new financial goal for the current user.
     """
     goal = crud_goal.create_financial_goal(
         session=session, goal_in=goal_in, user_id=current_user.id
     )
-    return goal
+    return goal.model_dump()
 
 
-@router.get("/", response_model=Sequence[FinancialGoalReadWithDetails])
+@router.get("/", response_model=List[FinancialGoalReadWithDetails])
 def read_financial_goals(
-    session: SessionDep, current_user: CurrentUser, skip: int = 0, limit: int = 100
+    session: SessionDep, current_user: CurrentUser
 ) -> Any:
     """
     Retrieve financial goals for the current user.
     """
     goals = crud_goal.get_financial_goals_by_user(
-        session=session, user_id=current_user.id, skip=skip, limit=limit
+        session=session, user_id=current_user.id
     )
-    return goals
+    
+    # Use the utility function to format the goals for response
+    return format_financial_goals_for_response(goals)
 
 
 @router.get("/{goal_id}", response_model=FinancialGoalReadWithDetails)
@@ -60,7 +64,9 @@ def read_financial_goal_by_id(
     )
     if not goal:
         raise HTTPException(status_code=404, detail="Financial Goal not found")
-    return goal
+    
+    # Use the utility function to format the goal for response
+    return format_financial_goal_for_response(goal)
 
 
 @router.patch("/{goal_id}", response_model=FinancialGoalRead)
@@ -83,7 +89,7 @@ def update_financial_goal(
     updated_goal = crud_goal.update_financial_goal(
         session=session, db_goal=db_goal, goal_in=goal_in
     )
-    return updated_goal
+    return updated_goal.model_dump()
 
 
 @router.post("/{goal_id}/add-saving", response_model=FinancialGoalRead)
@@ -108,7 +114,7 @@ def add_saving_to_financial_goal(
         updated_goal = crud_goal.add_saving_to_goal(
             session=session, db_goal=db_goal, amount=saving_in.amount
         )
-        return updated_goal
+        return updated_goal.model_dump()
     except ValueError as e:
         # Handle cases like adding negative amounts if validation is in CRUD
         raise HTTPException(status_code=400, detail=str(e))
@@ -131,4 +137,4 @@ def delete_financial_goal(
         raise HTTPException(status_code=404, detail="Financial Goal not found")
 
     crud_goal.delete_financial_goal(session=session, db_goal=db_goal)
-    return Message(message="Financial Goal deleted successfully") 
+    return Message(message="Financial Goal deleted successfully")

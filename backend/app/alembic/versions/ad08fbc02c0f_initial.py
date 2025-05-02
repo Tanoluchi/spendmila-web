@@ -1,8 +1,8 @@
 """initial
 
-Revision ID: ce8e92f7fb79
+Revision ID: ad08fbc02c0f
 Revises: 
-Create Date: 2025-04-30 18:28:49.818934
+Create Date: 2025-05-02 16:19:27.312956
 
 """
 from alembic import op
@@ -11,7 +11,7 @@ import sqlmodel.sql.sqltypes
 
 
 # revision identifiers, used by Alembic.
-revision = 'ce8e92f7fb79'
+revision = 'ad08fbc02c0f'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -56,7 +56,7 @@ def upgrade():
     op.create_index(op.f('ix_user_id'), 'user', ['id'], unique=False)
     op.create_table('account',
     sa.Column('name', sqlmodel.sql.sqltypes.AutoString(length=150), nullable=False),
-    sa.Column('type', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+    sa.Column('account_type', sa.Enum('BANK', 'DIGITAL', 'CASH', 'OTHER', name='accounttype'), nullable=False),
     sa.Column('balance', sa.Float(), nullable=False),
     sa.Column('institution', sqlmodel.sql.sqltypes.AutoString(length=150), nullable=True),
     sa.Column('icon', sqlmodel.sql.sqltypes.AutoString(length=255), nullable=True),
@@ -69,10 +69,10 @@ def upgrade():
     sa.ForeignKeyConstraint(['user_id'], ['user.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
+    op.create_index(op.f('ix_account_account_type'), 'account', ['account_type'], unique=False)
     op.create_index(op.f('ix_account_currency_id'), 'account', ['currency_id'], unique=False)
     op.create_index(op.f('ix_account_id'), 'account', ['id'], unique=False)
     op.create_index(op.f('ix_account_name'), 'account', ['name'], unique=False)
-    op.create_index(op.f('ix_account_type'), 'account', ['type'], unique=False)
     op.create_index(op.f('ix_account_user_id'), 'account', ['user_id'], unique=False)
     op.create_table('financial_goal',
     sa.Column('name', sqlmodel.sql.sqltypes.AutoString(length=150), nullable=False),
@@ -178,8 +178,8 @@ def upgrade():
     sa.Column('description', sqlmodel.sql.sqltypes.AutoString(length=255), nullable=True),
     sa.Column('is_active', sa.Boolean(), nullable=False),
     sa.Column('user_id', sa.Uuid(), nullable=False),
-    sa.Column('category_id', sa.Uuid(), nullable=True),
-    sa.Column('payment_method_id', sa.Uuid(), nullable=True),
+    sa.Column('category_id', sa.Uuid(), nullable=False),
+    sa.Column('payment_method_id', sa.Uuid(), nullable=False),
     sa.Column('currency_id', sa.Uuid(), nullable=False),
     sa.Column('account_id', sa.Uuid(), nullable=True),
     sa.Column('subscription_id', sa.Uuid(), nullable=True),
@@ -259,10 +259,10 @@ def downgrade():
     op.drop_index(op.f('ix_financial_goal_currency_id'), table_name='financial_goal')
     op.drop_table('financial_goal')
     op.drop_index(op.f('ix_account_user_id'), table_name='account')
-    op.drop_index(op.f('ix_account_type'), table_name='account')
     op.drop_index(op.f('ix_account_name'), table_name='account')
     op.drop_index(op.f('ix_account_id'), table_name='account')
     op.drop_index(op.f('ix_account_currency_id'), table_name='account')
+    op.drop_index(op.f('ix_account_account_type'), table_name='account')
     op.drop_table('account')
     op.drop_index(op.f('ix_user_id'), table_name='user')
     op.drop_index(op.f('ix_user_email'), table_name='user')

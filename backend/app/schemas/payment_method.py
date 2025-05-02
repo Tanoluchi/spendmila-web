@@ -12,7 +12,7 @@ class PaymentMethodBase(SQLModel):
     
     name: str = Field(max_length=255)
     description: Optional[str] = Field(default=None, max_length=255)
-    payment_method_type: PaymentMethodType
+    payment_method_type: PaymentMethodType = Field(default=PaymentMethodType.CASH)
     is_active: bool = True
 
 

@@ -11,10 +11,10 @@ def get_payment_method(*, session: Session, payment_method_id: uuid.UUID) -> Pay
     """Get a payment method by ID."""
     return session.get(PaymentMethod, payment_method_id)
 
-def get_payment_methods(*, session: Session, skip: int = 0, limit: int = 100) -> Sequence[PaymentMethod]:
+def get_payment_methods(*, session: Session) -> Sequence[PaymentMethod]:
     """Get multiple payment methods."""
     # Consider adding filtering by user if payment methods become user-specific
-    statement = select(PaymentMethod).offset(skip).limit(limit)
+    statement = select(PaymentMethod)
     return session.exec(statement).all()
 
 def create_payment_method(*, session: Session, payment_method_in: PaymentMethodCreate, user_id: uuid.UUID) -> PaymentMethod:

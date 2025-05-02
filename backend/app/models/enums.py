@@ -70,6 +70,13 @@ class DebtType(str, Enum):
     MEDICAL = "medical"
     OTHER = "other"
 
+class AccountType(str, Enum):
+    """Type of account."""
+    BANK = "bank"
+    DIGITAL = "digital"
+    CASH = "cash"
+    OTHER = "other"
+
 
 class SubscriptionStatus(str, Enum):
     """Status of a subscription."""

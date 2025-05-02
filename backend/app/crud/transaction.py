@@ -1,10 +1,11 @@
 import uuid
 from typing import Sequence, Union, Optional, List
 
-from sqlmodel import Session, select, func # Added func
+from sqlmodel import Session, select, func, or_ # Added or_
 
 from app.models.transaction import Transaction
 from app.models.enums import TransactionType
+from app.models.category import Category
 from app.schemas.transaction import (
     TransactionCreate, TransactionUpdate
 )
@@ -20,45 +21,100 @@ def get_transaction(
 
 
 def get_transactions(
-    *, session: Session, user_id: uuid.UUID, skip: int = 0, limit: int = 100,
+    *, session: Session, user_id: uuid.UUID,
     transaction_type: Optional[TransactionType] = None,
-    # TODO: Add optional filters: date_from, date_to, category_id
+    category_name: Optional[str] = None,
+    skip: int = 0,
+    limit: int = 100
 ) -> Sequence[Transaction]:
-    """Get multiple transactions for a specific user, optionally filtered."""
-    statement = (
-        select(Transaction)
-        .where(Transaction.user_id == user_id)
-    )
+    """
+    Get multiple transactions for a specific user, with optional filtering and pagination.
+    
+    Args:
+        session: Database session
+        user_id: User ID to filter by
+        transaction_type: Optional transaction type filter
+        category_name: Optional category name filter
+        skip: Number of records to skip (for pagination)
+        limit: Maximum number of records to return
+    
+    Returns:
+        A sequence of Transaction objects
+    """
+    # Start with the base query
+    statement = select(Transaction).where(Transaction.user_id == user_id)
     
     # Filter by transaction type if provided
     if transaction_type:
         statement = statement.where(Transaction.transaction_type == transaction_type)
+    
+    # Filter by category name if provided
+    if category_name:
+        # Join with Category table to filter by name
+        statement = (
+            select(Transaction)
+            .join(Category, Transaction.category_id == Category.id)
+            .where(
+                Transaction.user_id == user_id,
+                Category.name == category_name
+            )
+        )
         
+        # Re-apply transaction type filter if needed
+        if transaction_type:
+            statement = statement.where(Transaction.transaction_type == transaction_type)
+    
+    # Apply ordering, pagination
     statement = (
         statement
-        .order_by(Transaction.date.desc()) # Order by date descending by default
+        .order_by(Transaction.date.desc())
         .offset(skip)
         .limit(limit)
     )
     
-    # Add additional filters here based on optional arguments
     return session.exec(statement).all()
 
 
 def get_transaction_count(
     *, session: Session, user_id: uuid.UUID,
-    transaction_type: Optional[TransactionType] = None
-    # TODO: Add optional filters matching get_transactions
+    transaction_type: Optional[TransactionType] = None,
+    category_name: Optional[str] = None
 ) -> int:
-    """Get the total count of transactions for a user, optionally filtered."""
-    # Ideally, the filters applied here should match get_transactions
-    statement = select(func.count()).select_from(Transaction).where(Transaction.user_id == user_id)
+    """
+    Get the total count of transactions for a user, with optional filtering.
+    
+    Args:
+        session: Database session
+        user_id: User ID to filter by
+        transaction_type: Optional transaction type filter
+        category_name: Optional category name filter
+    
+    Returns:
+        Total count of matching transactions
+    """
+    # Start with the base query
+    statement = select(func.count(Transaction.id)).where(Transaction.user_id == user_id)
     
     # Filter by transaction type if provided
     if transaction_type:
         statement = statement.where(Transaction.transaction_type == transaction_type)
+    
+    # Filter by category name if provided
+    if category_name:
+        # Join with Category table to filter by name
+        statement = (
+            select(func.count(Transaction.id))
+            .join(Category, Transaction.category_id == Category.id)
+            .where(
+                Transaction.user_id == user_id,
+                Category.name == category_name
+            )
+        )
         
-    # Add filter clauses matching get_transactions
+        # Re-apply transaction type filter if needed
+        if transaction_type:
+            statement = statement.where(Transaction.transaction_type == transaction_type)
+    
     count = session.exec(statement).one()
     return count
 
@@ -72,7 +128,6 @@ def create_transaction(
 
     # Validate category_id if provided
     if transaction_data.get("category_id"):
-        from app.models.category import Category
         category = session.get(Category, transaction_data["category_id"])
         if not category:
             raise ValueError(f"Category with ID {transaction_data['category_id']} does not exist")
@@ -104,4 +159,4 @@ def update_transaction(
 def delete_transaction(*, session: Session, db_transaction: Transaction) -> None:
     """Delete a transaction."""
     session.delete(db_transaction)
-    session.commit() 
+    session.commit()

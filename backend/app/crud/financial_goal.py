@@ -18,14 +18,12 @@ def get_financial_goal(
 
 
 def get_financial_goals_by_user(
-    *, session: Session, user_id: uuid.UUID, skip: int = 0, limit: int = 100
+    *, session: Session, user_id: uuid.UUID
 ) -> Sequence[FinancialGoal]:
     """Get multiple financial goals for a specific user."""
     statement = (
         select(FinancialGoal)
         .where(FinancialGoal.user_id == user_id)
-        .offset(skip)
-        .limit(limit)
     )
     return session.exec(statement).all()
 

@@ -1,6 +1,7 @@
-import React from "react"
-import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query"
+import { useEffect, useState } from "react"
+import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { type SubmitHandler, useForm, Controller } from "react-hook-form"
+import { format } from "date-fns"
 
 import { Button } from "../ui/button-tailwind"
 import {
@@ -12,59 +13,30 @@ import {
   DialogFooter,
   DialogHeader,
   DialogRoot,
-  DialogTrigger,
 } from "../ui/dialog-tailwind"
 import { Field } from "../ui/field-tailwind"
-import { Input, Select, Textarea } from "../ui/input-tailwind"
+import { Input, Select } from "../ui/input-tailwind"
 import { NumberInput } from "../ui/number-input-tailwind"
 import { Text } from "../ui/text-tailwind"
-import { useState } from "react"
-import { Plus } from "lucide-react"
-import { format } from "date-fns"
 
 import type { ApiError } from "@/client/core/ApiError"
 import useCustomToast from "@/hooks/useCustomToast"
 import { handleError } from "@/utils"
-
-// This would be defined in your client/types.gen.ts
-interface TransactionCreate {
-  description: string;
-  amount: number;
-  type: string;
-  date: string;
-  currency_id: string;
-  category_id?: string;
-  payment_method_id?: string;
-  subscription_id?: string;
-  financial_goal_id?: string;
-  debt_id?: string;
-}
-
-// Mock service for now - would be replaced with actual service from SDK
-const TransactionService = {
-  createTransaction: async (data: { requestBody: TransactionCreate }) => {
-    // This would call the actual API endpoint
-    return fetch('/api/v1/transactions/', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('access_token')}`
-      },
-      body: JSON.stringify(data.requestBody)
-    }).then(res => {
-      if (!res.ok) throw new Error('Failed to create transaction');
-      return res.json();
-    });
-  }
-};
-
-interface AddTransactionProps {
-  isOpen?: boolean;
-  onOpenChange?: (open: boolean) => void;
-}
+import { useCurrencies } from "@/hooks/useCurrencies"
+import { useCategories } from "@/hooks/useCategories"
+import { useAccounts } from "@/hooks/useAccounts"
+import { useSubscriptions } from "@/hooks/useSubscriptions"
+import { useDebts } from "@/hooks/useDebts"
+import { useGoals } from "@/hooks/useGoals"
+import { usePaymentMethods } from "@/hooks/usePaymentMethods"
+import { Category, TransactionService } from "@/client/services/TransactionService"
+import useAuth from "@/hooks/useAuth"
+import { TransactionCreate } from "@/types/transaction"
+import { AddTransactionProps } from "@/types/props"
 
 const AddTransaction = ({ isOpen: externalIsOpen, onOpenChange }: AddTransactionProps = {}) => {
   const [internalIsOpen, setInternalIsOpen] = useState(false);
+  const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
   const isOpen = externalIsOpen !== undefined ? externalIsOpen : internalIsOpen;
   
   const handleOpenChange = (open: boolean) => {
@@ -73,35 +45,27 @@ const AddTransaction = ({ isOpen: externalIsOpen, onOpenChange }: AddTransaction
     }
     onOpenChange?.(open);
   };
+  
   const queryClient = useQueryClient();
   const { showSuccessToast, showErrorToast } = useCustomToast();
-  const [showInstallments, setShowInstallments] = useState(false);
+  const { user } = useAuth();
   
-  // Fetch currencies, categories, and payment methods
-  const { data: currencies } = useQuery({
-    queryKey: ["currencies"],
-    queryFn: () => fetch('/api/v1/currencies').then(res => res.json()),
-    enabled: isOpen
-  });
-
-  const { data: categories } = useQuery({
-    queryKey: ["categories"],
-    queryFn: () => fetch('/api/v1/categories').then(res => res.json()),
-    enabled: isOpen
-  });
-
-  const { data: paymentMethods } = useQuery({
-    queryKey: ["paymentMethods"],
-    queryFn: () => fetch('/api/v1/payment-methods').then(res => res.json()),
-    enabled: isOpen
-  });
-
+  // Use existing hooks to fetch data
+  const { currencies } = useCurrencies();
+  const { categories, isLoading: categoriesLoading } = useCategories();
+  const { accounts, isLoading: accountsLoading } = useAccounts();
+  const { subscriptions, isLoading: subscriptionsLoading } = useSubscriptions();
+  const { debts, isLoading: debtsLoading } = useDebts();
+  const { goals: financialGoals, isLoading: goalsLoading } = useGoals();
+  const { paymentMethods, isLoading: paymentMethodsLoading } = usePaymentMethods();
+  
   const {
     register,
     handleSubmit,
     control,
     reset,
     watch,
+    setValue,
     formState: { errors, isValid, isSubmitting },
   } = useForm<TransactionCreate>({
     mode: "onBlur",
@@ -109,27 +73,113 @@ const AddTransaction = ({ isOpen: externalIsOpen, onOpenChange }: AddTransaction
     defaultValues: {
       description: "",
       amount: 0,
-      type: "expense",
+      transaction_type: "expense",
       date: format(new Date(), 'yyyy-MM-dd'),
       currency_id: "",
+      category_id: "",
+      payment_method_id: "",
     },
   });
 
-  const transactionType = watch("type");
+  // Set default currency when the modal opens
+  useEffect(() => {
+    if (isOpen) {
+      // Reset form when modal opens
+      reset({
+        description: "",
+        amount: 0,
+        transaction_type: "expense",
+        date: format(new Date(), 'yyyy-MM-dd'),
+        currency_id: user?.default_currency_id || "",
+        category_id: "",
+        payment_method_id: "",
+      });
+      
+      if (user?.default_currency_id) {
+        setValue("currency_id", user.default_currency_id);
+      } else if (currencies.length > 0) {
+        // If no default currency is set, use the first available currency
+        setValue("currency_id", currencies[0].id);
+      }
+      
+      // Set default category and payment method if available
+      if (categories.length > 0) {
+        const expenseCategories = categories.filter(c => c.category_type === "expense");
+        if (expenseCategories.length > 0) {
+          setValue("category_id", expenseCategories[0].id);
+        }
+      }
+      
+      if (paymentMethods.length > 0) {
+        const defaultMethod = paymentMethods.find(m => m.is_default);
+        if (defaultMethod) {
+          setValue("payment_method_id", defaultMethod.id);
+        } else {
+          setValue("payment_method_id", paymentMethods[0].id);
+        }
+      }
+    }
+  }, [isOpen, currencies, categories, paymentMethods, setValue, reset, user]);
+
+  const transactionType = watch("transaction_type");
+  const selectedAccountId = watch("account_id");
+
+  // Update currency when account changes
+  useEffect(() => {
+    if (selectedAccountId && accounts.length > 0) {
+      const selectedAccount = accounts.find(account => account.id === selectedAccountId);
+      if (selectedAccount && selectedAccount.currency_id) {
+        setValue("currency_id", selectedAccount.currency_id);
+      }
+    } else if (user?.default_currency_id && !selectedAccountId) {
+      // Reset to default currency when no account is selected
+      setValue("currency_id", user.default_currency_id);
+    }
+  }, [selectedAccountId, accounts, setValue, user]);
+
+  // Update categories when transaction type changes
+  useEffect(() => {
+    if (categories.length > 0) {
+      const filteredCats = categories.filter(c => 
+        (transactionType === "income" && c.category_type === "income") || 
+        (transactionType === "expense" && c.category_type === "expense")
+      );
+      
+      if (filteredCats.length > 0) {
+        // Check if current category is valid for this transaction type
+        const currentCategoryId = watch("category_id");
+        const currentCategoryIsValid = filteredCats.some(c => c.id === currentCategoryId);
+        
+        if (!currentCategoryIsValid) {
+          setValue("category_id", filteredCats[0].id);
+        }
+      }
+    }
+  }, [transactionType, categories, setValue, watch]);
 
   const mutation = useMutation({
-    mutationFn: (data: TransactionCreate) =>
-      TransactionService.createTransaction({ requestBody: data }),
+    mutationFn: (data: TransactionCreate) => {
+      // Ensure all optional fields that are empty strings are set to undefined
+      // This prevents the backend from trying to parse empty strings as UUIDs
+      const cleanedData = {
+        ...data,
+        subscription_id: data.subscription_id || undefined,
+        financial_goal_id: data.financial_goal_id || undefined,
+        debt_id: data.debt_id || undefined,
+        account_id: data.account_id || undefined,
+      };
+      
+      return TransactionService.createTransaction(cleanedData);
+    },
     onSuccess: () => {
       showSuccessToast("Transaction created successfully.");
       reset();
       handleOpenChange(false);
+      queryClient.invalidateQueries({ queryKey: ["transactions"] });
     },
     onError: (err: ApiError) => {
+      console.error("Transaction creation error:", err);
       handleError(err, showErrorToast);
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["transactions"] });
     },
   });
 
@@ -137,187 +187,341 @@ const AddTransaction = ({ isOpen: externalIsOpen, onOpenChange }: AddTransaction
     mutation.mutate(data);
   };
 
+  // Get the current currency name for display
+  const getCurrentCurrencyName = () => {
+    const currencyId = watch("currency_id");
+    if (!currencyId) return "Loading...";
+    
+    // Check if it's from an account
+    if (selectedAccountId) {
+      const selectedAccount = accounts.find(account => account.id === selectedAccountId);
+      if (selectedAccount && selectedAccount.currency) {
+        return `${selectedAccount.currency.code} (${selectedAccount.name})`;
+      }
+    }
+    
+    // Otherwise use the default currency
+    const currency = currencies.find(c => c.id === currencyId);
+    if (currency) {
+      return `${currency.code} (Default)`;
+    }
+    
+    return "Loading...";
+  };
+
+  // Filter categories based on transaction type and remove duplicates
+  const filteredCategories = categories.reduce((acc: Category[], category: Category) => {
+    // Only include categories that match the transaction type
+    if ((transactionType === "income" && category.category_type === "income") || 
+        (transactionType === "expense" && category.category_type === "expense")) {
+      // Check if this category ID is already in our accumulator
+      if (!acc.some(c => c.id === category.id)) {
+        acc.push(category);
+      }
+    }
+    return acc;
+  }, []);
+
+  // Check if we have any optional items to show
+  const hasOptionalItems = 
+    (financialGoals && financialGoals.length > 0) || 
+    (subscriptions && subscriptions.length > 0) || 
+    (debts && debts.length > 0);
+
+  // Handle cancel button click
+  const handleCancel = () => {
+    reset();
+    handleOpenChange(false);
+  };
+
   return (
     <DialogRoot
-      size={{ base: "xs", md: "md" }}
+      size={{ base: "sm", md: "lg" }}
       placement="center"
       open={isOpen}
       onOpenChange={({ open }) => handleOpenChange(open)}
     >
-      <DialogTrigger asChild>
-        <Button variant="solid" colorPalette="purple" className="my-4 inline-flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-md">
-          <Plus size={16} />
-          Add Transaction
-        </Button>
-      </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="max-h-[90vh] overflow-y-auto">
         <form onSubmit={handleSubmit(onSubmit)}>
-          <DialogHeader>
+          <DialogHeader className="sticky top-0 bg-white z-10 pb-2 border-b">
             <DialogTitle>Add Transaction</DialogTitle>
+            <Text size="sm" className="text-gray-600">Fill in the details to add a new transaction.</Text>
           </DialogHeader>
-          <DialogBody>
-            <Text mb={4}>Fill in the details to add a new transaction.</Text>
+          
+          <DialogBody className="py-4">
+            {/* Main transaction details */}
             <div className="space-y-4">
-              <Field
-                required
-                invalid={!!errors.description}
-                errorText={errors.description?.message}
-                label="Description"
-              >
-                <Input
-                  id="description"
-                  {...register("description", {
-                    required: "Description is required.",
-                  })}
-                  placeholder="Description"
-                  type="text"
-                />
-              </Field>
-
-              <Field
-                required
-                invalid={!!errors.amount}
-                errorText={errors.amount?.message}
-                label="Amount"
-              >
-                <Controller
-                  name="amount"
-                  control={control}
-                  rules={{ required: "Amount is required" }}
-                  render={({ field }) => (
-                    <NumberInput
-                      step={0.01}
-                      value={field.value || 0}
-                      onChange={(value) => field.onChange(value)}
-                    />
-                  )}
-                />
-              </Field>
-
-              <Field
-                required
-                invalid={!!errors.type}
-                errorText={errors.type?.message}
-                label="Type"
-              >
-                <Select
-                  id="type"
-                  {...register("type", {
-                    required: "Type is required.",
-                  })}
-                  onChange={(e) => {
-                    register("type").onChange(e);
-                    setShowInstallments(e.target.value === "expense");
-                  }}
+              {/* First row: Type and Amount */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Field
+                  required
+                  invalid={!!errors.transaction_type}
+                  errorText={errors.transaction_type?.message}
+                  label="Type"
                 >
-                  <option value="expense">Expense</option>
-                  <option value="income">Income</option>
-                  <option value="transfer">Transfer</option>
-                </Select>
-              </Field>
-
-              {showInstallments && (
-                <Field label="Installments">
-                  <FormControl display="flex" alignItems="center">
-                    <FormLabel htmlFor="installments" mb="0">
-                      Pay in installments?
-                    </FormLabel>
-                    <Switch id="installments" />
-                  </FormControl>
+                  <Select
+                    id="transaction_type"
+                    {...register("transaction_type", {
+                      required: "Type is required.",
+                    })}
+                  >
+                    <option value="expense">Expense</option>
+                    <option value="income">Income</option>
+                  </Select>
                 </Field>
+
+                <Field
+                  required
+                  invalid={!!errors.amount}
+                  errorText={errors.amount?.message}
+                  label="Amount"
+                >
+                  <Controller
+                    name="amount"
+                    control={control}
+                    rules={{ 
+                      required: "Amount is required",
+                      min: { value: 0.01, message: "Amount must be greater than 0" }
+                    }}
+                    render={({ field }) => (
+                      <NumberInput
+                        min={0.01}
+                        step={0.01}
+                        value={field.value || 0}
+                        onChange={(value) => field.onChange(value)}
+                      />
+                    )}
+                  />
+                </Field>
+              </div>
+
+              {/* Second row: Description and Date */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Field
+                  invalid={!!errors.description}
+                  errorText={errors.description?.message}
+                  label="Description"
+                >
+                  <Input
+                    id="description"
+                    {...register("description")}
+                    placeholder="Description (optional)"
+                    type="text"
+                  />
+                </Field>
+
+                <Field
+                  required
+                  invalid={!!errors.date}
+                  errorText={errors.date?.message}
+                  label="Date"
+                >
+                  <Input
+                    id="date"
+                    {...register("date", {
+                      required: "Date is required.",
+                    })}
+                    type="date"
+                  />
+                </Field>
+              </div>
+
+              {/* Third row: Account and Currency */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Field
+                  invalid={!!errors.account_id}
+                  errorText={errors.account_id?.message}
+                  label="Account"
+                >
+                  <Select
+                    id="account_id"
+                    {...register("account_id")}
+                    placeholder="Select account (optional)"
+                    disabled={accountsLoading}
+                  >
+                    <option value="">------</option>
+                    {accounts.map((account) => (
+                      <option key={account.id} value={account.id}>
+                        {account.name}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+
+                <Field label="Currency">
+                  <Input
+                    value={getCurrentCurrencyName()}
+                    disabled
+                    readOnly
+                  />
+                  <input type="hidden" {...register("currency_id", {
+                    required: "Currency is required."
+                  })} />
+                </Field>
+              </div>
+
+              {/* Fourth row: Category and Payment Method */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Field
+                  required
+                  invalid={!!errors.category_id}
+                  errorText={errors.category_id?.message}
+                  label="Category"
+                >
+                  <Select
+                    id="category_id"
+                    {...register("category_id", {
+                      required: "Category is required.",
+                    })}
+                    placeholder="Select category"
+                    disabled={categoriesLoading || filteredCategories.length === 0}
+                  >
+                    {filteredCategories.length > 0 ? (
+                      filteredCategories.map((category: Category) => (
+                        <option key={category.id} value={category.id}>
+                          {category.name}
+                        </option>
+                      ))
+                    ) : (
+                      <option value="" disabled>No categories available</option>
+                    )}
+                  </Select>
+                </Field>
+
+                <Field
+                  required
+                  invalid={!!errors.payment_method_id}
+                  errorText={errors.payment_method_id?.message}
+                  label="Payment Method"
+                >
+                  <Select
+                    id="payment_method_id"
+                    {...register("payment_method_id", {
+                      required: "Payment method is required.",
+                    })}
+                    placeholder="Select payment method"
+                    disabled={paymentMethodsLoading}
+                  >
+                    {paymentMethods && paymentMethods.length > 0 ? (
+                      paymentMethods.map((method) => (
+                        <option key={method.id} value={method.id}>
+                          {method.name}
+                        </option>
+                      ))
+                    ) : (
+                      <option value="" disabled>No payment methods available</option>
+                    )}
+                  </Select>
+                </Field>
+              </div>
+              
+              {/* Optional fields section */}
+              {hasOptionalItems && (
+                <div className="mt-6 pt-4 border-t border-gray-200">
+                  <button
+                    type="button"
+                    className="flex items-center text-purple-600 hover:text-purple-800 font-medium mb-4"
+                    onClick={() => setShowAdvancedOptions(!showAdvancedOptions)}
+                  >
+                    <span className="mr-2">{showAdvancedOptions ? '−' : '+'}</span>
+                    {showAdvancedOptions ? 'Hide' : 'Show'} Additional Options
+                  </button>
+                  
+                  {showAdvancedOptions && (
+                    <div className="space-y-4">
+                      {/* Financial Goal */}
+                      {financialGoals && financialGoals.length > 0 && (
+                        <Field
+                          invalid={!!errors.financial_goal_id}
+                          errorText={errors.financial_goal_id?.message}
+                          label="Financial Goal"
+                        >
+                          <Select
+                            id="financial_goal_id"
+                            {...register("financial_goal_id")}
+                            placeholder="Select financial goal (optional)"
+                            disabled={goalsLoading}
+                          >
+                            <option value="">------</option>
+                            {financialGoals.map((goal) => (
+                              <option key={goal.id} value={goal.id}>
+                                {goal.name || `Goal #${goal.id.substring(0, 8)}`}
+                              </option>
+                            ))}
+                          </Select>
+                        </Field>
+                      )}
+                      
+                      {/* Optional fields in two columns */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {/* Subscription selection */}
+                        {subscriptions && subscriptions.length > 0 && (
+                          <Field
+                            invalid={!!errors.subscription_id}
+                            errorText={errors.subscription_id?.message}
+                            label="Subscription"
+                          >
+                            <Select
+                              id="subscription_id"
+                              {...register("subscription_id")}
+                              placeholder="Select subscription (optional)"
+                              disabled={subscriptionsLoading}
+                            >
+                              <option value="">------</option>
+                              {subscriptions.map((subscription) => (
+                                <option key={subscription.id} value={subscription.id}>
+                                  {subscription.service_name || `Subscription #${subscription.id.substring(0, 8)}`}
+                                </option>
+                              ))}
+                            </Select>
+                          </Field>
+                        )}
+                        
+                        {/* Debt selection */}
+                        {debts && debts.length > 0 && (
+                          <Field
+                            invalid={!!errors.debt_id}
+                            errorText={errors.debt_id?.message}
+                            label="Debt"
+                          >
+                            <Select
+                              id="debt_id"
+                              {...register("debt_id")}
+                              placeholder="Select debt (optional)"
+                              disabled={debtsLoading}
+                            >
+                              <option value="">------</option>
+                              {debts.map((debt) => (
+                                <option key={debt.id} value={debt.id}>
+                                  {debt.name || `Debt #${debt.id.substring(0, 8)}`}
+                                </option>
+                              ))}
+                            </Select>
+                          </Field>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
               )}
-
-              <Field
-                required
-                invalid={!!errors.date}
-                errorText={errors.date?.message}
-                label="Date"
-              >
-                <Input
-                  id="date"
-                  {...register("date", {
-                    required: "Date is required.",
-                  })}
-                  type="date"
-                />
-              </Field>
-
-              <Field
-                required
-                invalid={!!errors.currency_id}
-                errorText={errors.currency_id?.message}
-                label="Currency"
-              >
-                <Select
-                  id="currency_id"
-                  {...register("currency_id", {
-                    required: "Currency is required.",
-                  })}
-                  placeholder="Select currency"
-                >
-                  {currencies?.data?.map((currency: any) => (
-                    <option key={currency.id} value={currency.id}>
-                      {currency.code} - {currency.name}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-
-              <Field
-                invalid={!!errors.category_id}
-                errorText={errors.category_id?.message}
-                label="Category"
-              >
-                <Select
-                  id="category_id"
-                  {...register("category_id")}
-                  placeholder="Select category (optional)"
-                >
-                  {categories?.data?.filter((cat: any) => 
-                    transactionType === "income" ? cat.type === "income" : cat.type === "expense"
-                  )?.map((category: any) => (
-                    <option key={category.id} value={category.id}>
-                      {category.name}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-
-              <Field
-                invalid={!!errors.payment_method_id}
-                errorText={errors.payment_method_id?.message}
-                label="Payment Method"
-              >
-                <Select
-                  id="payment_method_id"
-                  {...register("payment_method_id")}
-                  placeholder="Select payment method (optional)"
-                >
-                  {paymentMethods?.data?.map((method: any) => (
-                    <option key={method.id} value={method.id}>
-                      {method.name}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
             </div>
           </DialogBody>
 
-          <DialogFooter gap={2}>
-            <DialogActionTrigger asChild>
-              <Button
-                variant="subtle"
-                colorPalette="gray"
-                disabled={isSubmitting}
-              >
-                Cancel
-              </Button>
-            </DialogActionTrigger>
+          <DialogFooter gap={2} className="sticky bottom-0 bg-white z-10 pt-2 border-t">
+            <Button
+              variant="subtle"
+              colorPalette="gray"
+              disabled={isSubmitting}
+              onClick={handleCancel}
+              type="button"
+            >
+              Cancel
+            </Button>
             <Button
               variant="solid"
               colorPalette="purple"
               type="submit"
-              disabled={!isValid}
+              disabled={!isValid || isSubmitting}
               loading={isSubmitting}
             >
               Save

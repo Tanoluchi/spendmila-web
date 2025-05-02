@@ -26,7 +26,7 @@ class AccountReadWithDetails(AccountRead):
 class AccountUpdate(SQLModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     name: Optional[str] = None
-    type: Optional[str] = None
+    account_type: Optional[str] = None
     balance: Optional[float] = None
     institution: Optional[str] = None
     currency_id: Optional[uuid.UUID] = None
@@ -35,4 +35,3 @@ class AccountUpdate(SQLModel):
 class AccountsPublic(SQLModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     data: List[AccountRead]
-    count: int

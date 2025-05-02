@@ -5,6 +5,12 @@ from pydantic import EmailStr, ConfigDict
 from sqlmodel import Field, SQLModel
 
 from app.models.enums import SubscriptionType
+from app.schemas.currency import CurrencyRead
+from app.schemas.transaction import TransactionRead
+from app.schemas.financial_goal import FinancialGoalRead
+from app.schemas.subscription import SubscriptionRead
+from app.schemas.debt import DebtRead
+from app.schemas.account import AccountRead
 
 
 class UserBase(SQLModel):
@@ -15,13 +21,13 @@ class UserBase(SQLModel):
     is_active: bool = True
     is_superuser: bool = False
     subscription_type: SubscriptionType = Field(default=SubscriptionType.FREE)
-    default_currency_id: Optional[uuid.UUID] = Field(default=None)
+    default_currency_id: uuid.UUID = Field(default=None)
 
 
 class UserRead(UserBase):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     id: uuid.UUID
-    default_currency: Optional[dict] = None
+    default_currency: CurrencyRead = None
 
 
 class UserCreate(UserBase):
@@ -67,10 +73,11 @@ class UsersPublic(SQLModel):
 
 class UserReadWithDetails(UserRead):
     model_config = ConfigDict(arbitrary_types_allowed=True)
-    transactions: List[dict] = []
-    financial_goals: List[dict] = []
-    subscriptions: List[dict] = []
-    debts: List[dict] = []
+    transactions: List[TransactionRead] = []
+    financial_goals: List[FinancialGoalRead] = []
+    subscriptions: List[SubscriptionRead] = []
+    debts: List[DebtRead] = []
+    accounts: List[AccountRead] = []
 
 
 class Message(SQLModel):

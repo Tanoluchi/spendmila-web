@@ -75,3 +75,73 @@ class FinancialGoalAddSaving(SQLModel):
     amount: float = Field(gt=0)
     saving_date: datetime.date = Field(default_factory=datetime.date.today)
     notes: Optional[str] = Field(default=None, max_length=255)
+
+
+# Utility functions for converting models to API response format
+
+def format_financial_goal_for_response(goal) -> Dict[str, Any]:
+    """
+    Convert a FinancialGoal model instance to a dictionary format suitable for API responses.
+    This handles nested objects like user and currency properly.
+    
+    Args:
+        goal: A FinancialGoal model instance
+        
+    Returns:
+        Dict[str, Any]: A dictionary representation of the goal with properly formatted nested objects
+    """
+    if not goal:
+        return None
+        
+    # Calculate progress percentage
+    progress_percentage = 0
+    if goal.target_amount > 0:
+        progress_percentage = (goal.current_amount / goal.target_amount) * 100
+    
+    # Create the base dictionary from the model
+    goal_dict = {
+        "id": goal.id,
+        "name": goal.name,
+        "description": goal.description,
+        "target_amount": goal.target_amount,
+        "current_amount": goal.current_amount,
+        "deadline": goal.deadline,
+        "status": goal.status,
+        "goal_type": goal.goal_type,
+        "icon": goal.icon,
+        "color": goal.color,
+        "is_active": getattr(goal, "is_active", True),
+        "user_id": goal.user_id,
+        "currency_id": goal.currency_id,
+        "account_id": getattr(goal, "account_id", None),
+        "created_at": getattr(goal, "created_at", None),
+        "updated_at": getattr(goal, "updated_at", None),
+        "progress_percentage": progress_percentage,
+        "savings": []  # Add savings if needed
+    }
+    
+    # Handle nested objects
+    if hasattr(goal, "user") and goal.user:
+        goal_dict["user"] = goal.user.model_dump()
+    else:
+        goal_dict["user"] = None
+        
+    if hasattr(goal, "currency") and goal.currency:
+        goal_dict["currency"] = goal.currency.model_dump()
+    else:
+        goal_dict["currency"] = None
+    
+    return goal_dict
+
+
+def format_financial_goals_for_response(goals) -> List[Dict[str, Any]]:
+    """
+    Convert a list of FinancialGoal model instances to a list of dictionaries suitable for API responses.
+    
+    Args:
+        goals: A list of FinancialGoal model instances
+        
+    Returns:
+        List[Dict[str, Any]]: A list of dictionary representations of the goals
+    """
+    return [format_financial_goal_for_response(goal) for goal in goals]
