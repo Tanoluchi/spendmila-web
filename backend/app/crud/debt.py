@@ -31,6 +31,13 @@ def create_debt(
     """Create a new debt for a user."""
     debt_data = debt_in.model_dump()
     debt_data["user_id"] = user_id
+    
+    # # Asegurar que los campos requeridos estén presentes
+    # if "total_amount" in debt_data and "amount" not in debt_data:
+    #     debt_data["amount"] = debt_data["total_amount"]
+    
+    # if "name" in debt_data and "creditor_name" not in debt_data:
+    #     debt_data["creditor_name"] = debt_data["name"]
 
     db_debt = Debt.model_validate(debt_data)
     session.add(db_debt)

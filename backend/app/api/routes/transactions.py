@@ -27,14 +27,19 @@ router = APIRouter()
 @router.post("/transactions", response_model=TransactionRead, tags=["transactions"])
 def create_transaction(
     *, session: SessionDep, current_user: CurrentUser, transaction_in: TransactionCreate
-) -> Transaction:
+) -> Any:
     """
     Create a new transaction (income or expense) for the current user.
     """
-    transaction = crud_transaction.create_transaction(
-        session=session, transaction_in=transaction_in, user_id=current_user.id
-    )
-    return transaction
+    try:
+        transaction = crud_transaction.create_transaction(
+            session=session, transaction_in=transaction_in, user_id=current_user.id
+        )
+        # Refresh the transaction to get all relationships
+        session.refresh(transaction)
+        return transaction
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.get("/transactions", response_model=List[TransactionReadWithDetails], tags=["transactions"])

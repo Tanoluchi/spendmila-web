@@ -70,6 +70,13 @@ def create_transaction(
     transaction_data = transaction_in.model_dump()
     transaction_data["user_id"] = user_id
 
+    # Validate category_id if provided
+    if transaction_data.get("category_id"):
+        from app.models.category import Category
+        category = session.get(Category, transaction_data["category_id"])
+        if not category:
+            raise ValueError(f"Category with ID {transaction_data['category_id']} does not exist")
+
     # Create transaction instance
     db_transaction = Transaction.model_validate(transaction_data)
 

@@ -6,14 +6,16 @@ from pydantic import ConfigDict
 from sqlmodel import Field, SQLModel
 
 from app.models.enums import DebtStatus, DebtType
+from app.schemas.currency import CurrencyRead
+from app.schemas.account import AccountRead
 
 
 class DebtBase(SQLModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     
-    name: str = Field(max_length=255)
+    creditor_name: str = Field(max_length=255)
     description: Optional[str] = Field(default=None, max_length=255)
-    total_amount: float = Field(gt=0)
+    amount: float = Field(gt=0)
     remaining_amount: float = Field(default=0)
     interest_rate: Optional[float] = Field(default=None, ge=0)
     due_date: date
@@ -29,8 +31,8 @@ class DebtRead(DebtBase):
     user_id: uuid.UUID
     currency_id: uuid.UUID
     account_id: Optional[uuid.UUID] = None
-    currency: Optional[dict] = None
-    account: Optional[dict] = None
+    currency: Optional[CurrencyRead] = None
+    account: Optional[AccountRead] = None
 
 
 class DebtCreate(DebtBase):
@@ -58,8 +60,8 @@ class DebtUpdate(SQLModel):
 class DebtPublic(DebtBase):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     id: uuid.UUID
-    currency: Optional[dict] = None
-    account: Optional[dict] = None
+    currency: Optional[CurrencyRead] = None
+    account: Optional[AccountRead] = None
 
 class DebtReadWithDetails(DebtRead):
     model_config = ConfigDict(arbitrary_types_allowed=True)

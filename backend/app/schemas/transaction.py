@@ -6,6 +6,13 @@ from pydantic import ConfigDict, Field
 from sqlmodel import SQLModel
 
 from app.models.enums import TransactionType
+from app.schemas.category import CategoryRead
+from app.schemas.currency import CurrencyRead
+from app.schemas.payment_method import PaymentMethodRead
+from app.schemas.subscription import SubscriptionRead
+from app.schemas.financial_goal import FinancialGoalRead
+from app.schemas.debt import DebtRead
+from app.schemas.account import AccountRead
 
 
 class TransactionBase(SQLModel):
@@ -22,13 +29,13 @@ class TransactionRead(TransactionBase):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     id: uuid.UUID
     user_id: uuid.UUID
-    currency: Optional[dict] = None
-    category: Optional[dict] = None
-    payment_method: Optional[dict] = None
-    subscription: Optional[dict] = None
-    financial_goal: Optional[dict] = None
-    debt: Optional[dict] = None
-    account: Optional[dict] = None
+    currency: Optional[CurrencyRead] = None
+    category: Optional[CategoryRead] = None
+    payment_method: Optional[PaymentMethodRead] = None
+    subscription: Optional[SubscriptionRead] = None
+    financial_goal: Optional[FinancialGoalRead] = None
+    debt: Optional[DebtRead] = None
+    account: Optional[AccountRead] = None
     installments: Optional[bool] = None
     installment_count: Optional[int] = None
 
@@ -66,13 +73,13 @@ class TransactionUpdate(SQLModel):
 class TransactionPublic(TransactionBase):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     id: uuid.UUID
-    currency: Optional[dict] = None
-    category: Optional[dict] = None
-    payment_method: Optional[dict] = None
-    subscription: Optional[dict] = None
-    financial_goal: Optional[dict] = None
-    debt: Optional[dict] = None
-    account: Optional[dict] = None
+    currency: Optional[CurrencyRead] = None
+    category: Optional[CategoryRead] = None
+    payment_method: Optional[PaymentMethodRead] = None
+    subscription: Optional[SubscriptionRead] = None
+    financial_goal: Optional[FinancialGoalRead] = None
+    debt: Optional[DebtRead] = None
+    account: Optional[AccountRead] = None
 
 
 
