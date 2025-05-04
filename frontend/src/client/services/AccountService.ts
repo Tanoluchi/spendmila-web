@@ -10,10 +10,12 @@ export interface Account {
   balance: number;
   institution?: string;
   icon?: string;
-  color?: string;
   is_default: boolean;
   user_id: string;
   currency_id: string;
+  created_at?: string;
+  last_transaction_date?: string;
+  transaction_count?: number;
 }
 
 export interface CreateAccountRequest {
@@ -21,8 +23,6 @@ export interface CreateAccountRequest {
   account_type: string;
   balance: number;
   institution?: string;
-  icon?: string;
-  color?: string;
   is_default?: boolean;
   currency_id: string;
 }
@@ -114,6 +114,21 @@ export class AccountService {
     return __request(OpenAPI, {
       method: "DELETE",
       url: `/api/v1/accounts/${id}`,
+      errors: {
+        422: "Validation Error",
+      },
+    });
+  }
+
+  /**
+   * Get all available account types
+   * @returns List of account types with name and value
+   * @throws ApiError
+   */
+  public static getAccountTypes(): CancelablePromise<Array<{ name: string; value: string }>> {
+    return __request(OpenAPI, {
+      method: "GET",
+      url: `/api/v1/accounts/types`,
       errors: {
         422: "Validation Error",
       },

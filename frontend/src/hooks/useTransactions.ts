@@ -9,6 +9,7 @@ import {
 
 export const useTransactions = (
   categoryFilter?: string,
+  accountFilter?: string,
   page: number = 1,
   pageSize: number = 10
 ) => {
@@ -21,10 +22,16 @@ export const useTransactions = (
     error,
     refetch
   } = useQuery<PaginatedTransactionsResponse, Error>({
-    queryKey: ["transactions", categoryFilter, page, pageSize],
+    queryKey: ["transactions", categoryFilter, accountFilter, page, pageSize],
     queryFn: async () => {
       try {
-        return await TransactionService.getTransactions(page, pageSize, categoryFilter);
+        // Add accountFilter to the API call
+        return await TransactionService.getTransactions(
+          page, 
+          pageSize, 
+          categoryFilter === 'ALL' ? undefined : categoryFilter,
+          accountFilter === 'ALL' ? undefined : accountFilter
+        );
       } catch (error) {
         console.error("Error fetching transactions:", error);
         throw error;

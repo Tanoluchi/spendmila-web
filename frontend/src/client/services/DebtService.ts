@@ -5,28 +5,49 @@ import { request as __request } from "../core/request";
 // Define debt types
 export interface Debt {
   id: string;
-  name: string;
+  creditor_name: string;
   debt_type: string;
-  balance: number;
+  amount: number;
+  remaining_amount: number;
   interest_rate: number;
-  minimum_payment: number;
-  due_date: number;
+  minimum_payment?: number;
+  due_date: string;
   user_id: string;
   currency_id: string;
   account_id?: string;
-  notes?: string;
+  description?: string;
+  is_installment: boolean;
+  total_installments?: number;
+  paid_installments?: number;
+  remaining_installments?: number;
+  payment_progress: number; // Percentage of debt paid (0-100)
+  start_date?: string;
+}
+
+export interface DebtPayment {
+  id: string;
+  amount: number;
+  date: string;
+  transaction_id: string;
+}
+
+export interface DebtWithDetails extends Debt {
+  payments: DebtPayment[];
+  paid_amount: number;
 }
 
 export interface CreateDebtRequest {
-  name: string;
+  creditor_name: string;
   debt_type: string;
-  balance: number;
-  interest_rate: number;
-  minimum_payment: number;
-  due_date: number;
-  currency_id: string;
+  amount: number;
+  interest_rate?: number;
+  minimum_payment?: number;
+  due_date: string;
   account_id?: string;
-  notes?: string;
+  description?: string;
+  is_installment: boolean;
+  total_installments?: number;
+  start_date?: string;
 }
 
 export class DebtService {

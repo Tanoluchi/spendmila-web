@@ -1,11 +1,13 @@
-from typing import Any, Sequence
+from typing import Any, Sequence, List, Dict
 import uuid
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session
 
 from app.api import deps
 from app.crud import account as account_crud
+from app.models.account import Account
 from app.models.user import User
+from app.models.enums import AccountType
 from app.schemas.account import (
     AccountCreate,
     AccountRead,
@@ -73,7 +75,7 @@ def get_account(
     account_id: uuid.UUID,
 ) -> Any:
     """
-    Get account by ID.
+    Get account by ID with details including transaction count and last transaction date.
     """
     account = account_crud.get_account(db=db, account_id=account_id)
     if not account:
@@ -85,11 +87,17 @@ def get_account(
             status_code=status.HTTP_403_FORBIDDEN, detail="Not enough permissions"
         )
     
+    # Actualizar el balance automáticamente basado en transacciones
+    account_crud.update_account_balance(db=db, account_id=account_id)
+    
+    # Obtener detalles completos de la cuenta, incluyendo conteo de transacciones
+    # y fecha de última transacción
     account_with_details = account_crud.get_account_with_details(db=db, account_id=account_id)
+    
     return account_with_details
 
 
-@router.put("/{account_id}", response_model=AccountRead)
+@router.patch("/{account_id}", response_model=AccountRead)
 def update_account(
     *,
     db: Session = Depends(deps.get_db),
@@ -151,11 +159,23 @@ def delete_account(
             status_code=status.HTTP_403_FORBIDDEN, detail="Not enough permissions"
         )
     
-    # Check if account has associated transactions, debts, or subscriptions
-    if account_crud.has_related_entities(db=db, account_id=account_id):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot delete account with associated transactions, debts, or subscriptions"
-        )
+    # La cuenta y todas sus entidades asociadas (transacciones, deudas, suscripciones)
+    # serán eliminadas automáticamente en cascada
     
     account_crud.delete_account(db=db, account_id=account_id)
+
+    return {"detail": "Account successfully deleted"}
+
+
+@router.get("/types", response_model=List[Dict[str, str]])
+def get_account_types() -> Any:
+    """
+    Get all available account types from the AccountType enum.
+    """
+    # Convertir el enum a una lista de diccionarios con name y value
+    account_types = [
+        {"name": account_type.name, "value": account_type.value}
+        for account_type in AccountType
+    ]
+    
+    return account_types

@@ -1,63 +1,32 @@
-import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query"
-import { type SubmitHandler, useForm, Controller } from "react-hook-form"
-import { useState } from "react"
-import { Plus } from "lucide-react"
+import { useForm, type SubmitHandler } from "react-hook-form"
+import { useState, useEffect } from "react"
+import { X } from "lucide-react"
 
 import { Button } from "../ui/button-tailwind"
 import { Input, Select } from "../ui/input-tailwind"
-import { NumberInput } from "../ui/number-input-tailwind"
 import { Text } from "../ui/text-tailwind"
 
-import type { ApiError } from "@/client/core/ApiError"
-import useCustomToast from "@/hooks/useCustomToast"
-import { handleError } from "@/utils"
 import {
   DialogBody,
-  DialogCloseTrigger,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogRoot,
-  DialogTrigger,
-  DialogActionTrigger,
   DialogTitle
 } from "../ui/dialog-tailwind"
 import { Field } from "../ui/field-tailwind"
-
-// This would be defined in your client/types.gen.ts
-interface AccountCreate {
-  name: string;
-  description?: string;
-  balance: number;
-  type: string;
-  currency_id: string;
-  is_active: boolean;
-}
-
-// Mock service for now - would be replaced with actual service from SDK
-const AccountService = {
-  createAccount: async (data: { requestBody: AccountCreate }) => {
-    // This would call the actual API endpoint
-    return fetch('/api/v1/accounts/', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('access_token')}`
-      },
-      body: JSON.stringify(data.requestBody)
-    }).then(res => {
-      if (!res.ok) throw new Error('Failed to create account');
-      return res.json();
-    });
-  }
-};
+import { useAccounts } from "@/hooks/useAccounts"
+import { useCurrencies } from "@/hooks/useCurrencies"
+import { useAccountTypes } from "@/hooks/useAccountTypes"
+import type { CreateAccountRequest } from "@/client/services/AccountService"
 
 interface AddAccountProps {
   isOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
+  accountId?: string | null;
 }
 
-const AddAccount = ({ isOpen: externalIsOpen, onOpenChange }: AddAccountProps = {}) => {
+const AddAccount = ({ isOpen: externalIsOpen, onOpenChange, accountId }: AddAccountProps = {}) => {
   const [internalIsOpen, setInternalIsOpen] = useState(false);
   const isOpen = externalIsOpen !== undefined ? externalIsOpen : internalIsOpen;
   
@@ -67,54 +36,56 @@ const AddAccount = ({ isOpen: externalIsOpen, onOpenChange }: AddAccountProps = 
     }
     onOpenChange?.(open);
   };
-  const queryClient = useQueryClient();
-  const { showSuccessToast, showErrorToast } = useCustomToast();
   
-  // Fetch currencies
-  const { data: currencies } = useQuery({
-    queryKey: ["currencies"],
-    queryFn: () => fetch('/api/v1/currencies').then(res => res.json()),
-    enabled: isOpen
-  });
+  const { createAccount, updateAccount, accounts = [] } = useAccounts();
+  const { currencies, isLoading: isLoadingCurrencies } = useCurrencies();
+  const { accountTypes, isLoading: isLoadingAccountTypes } = useAccountTypes();
+  
+  // Buscar la cuenta seleccionada si estamos en modo edición
+  const selectedAccount = accountId ? accounts.find(account => account.id === accountId) : undefined;
 
   const {
     register,
     handleSubmit,
-    control,
+
     reset,
     formState: { errors, isValid, isSubmitting },
-  } = useForm<AccountCreate>({
+  } = useForm<CreateAccountRequest>({
     mode: "onBlur",
     criteriaMode: "all",
     defaultValues: {
-      name: "",
-      description: "",
-      balance: 0,
-      type: "checking",
-      is_active: true,
-      currency_id: "",
+      name: selectedAccount?.name || "",
+      institution: selectedAccount?.institution || "",
+      balance: selectedAccount?.balance || 0,
+      account_type: selectedAccount?.account_type || "checking",
+      is_default: selectedAccount?.is_default || false,
+      currency_id: selectedAccount?.currency_id || "",
     },
   });
 
-  const mutation = useMutation({
-    mutationFn: (data: AccountCreate) =>
-      AccountService.createAccount({ requestBody: data }),
-    onSuccess: () => {
-      showSuccessToast("Account created successfully.");
-      reset();
-      handleOpenChange(false);
-    },
-    onError: (err: ApiError) => {
-      handleError(err, showErrorToast);
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["accounts"] });
-    },
-  });
-
-  const onSubmit: SubmitHandler<AccountCreate> = (data) => {
-    mutation.mutate(data);
+  const onSubmit: SubmitHandler<CreateAccountRequest> = (data) => {
+    if (accountId && selectedAccount) {
+      updateAccount({ id: accountId, data });
+    } else {
+      createAccount(data);
+    }
+    reset();
+    handleOpenChange(false);
   };
+
+  // Cargar los datos de la cuenta cuando se cambia el accountId
+  useEffect(() => {
+    if (selectedAccount) {
+      reset({
+        name: selectedAccount.name,
+        institution: selectedAccount.institution || "",
+        balance: selectedAccount.balance,
+        account_type: selectedAccount.account_type,
+        is_default: selectedAccount.is_default,
+        currency_id: selectedAccount.currency_id,
+      });
+    }
+  }, [selectedAccount, reset]);
 
   return (
     <DialogRoot
@@ -123,16 +94,19 @@ const AddAccount = ({ isOpen: externalIsOpen, onOpenChange }: AddAccountProps = 
       open={isOpen}
       onOpenChange={({ open }) => handleOpenChange(open)}
     >
-      <DialogTrigger asChild>
-        <Button variant="solid" colorPalette="blue" className="my-4 inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md">
-          <Plus size={16} />
-          Add Account
-        </Button>
-      </DialogTrigger>
       <DialogContent>
         <form onSubmit={handleSubmit(onSubmit)}>
           <DialogHeader>
-            <DialogTitle>Add Account</DialogTitle>
+            <div className="flex justify-between items-center">
+              <DialogTitle>{accountId ? 'Edit Account' : 'Add Account'}</DialogTitle>
+              <button 
+                type="button" 
+                onClick={() => handleOpenChange(false)}
+                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              >
+                <X size={18} />
+              </button>
+            </div>
           </DialogHeader>
           <DialogBody>
             <Text mb={4}>Fill in the details to add a new account.</Text>
@@ -154,56 +128,51 @@ const AddAccount = ({ isOpen: externalIsOpen, onOpenChange }: AddAccountProps = 
               </Field>
 
               <Field
-                invalid={!!errors.description}
-                errorText={errors.description?.message}
-                label="Description"
+                invalid={!!errors.institution}
+                errorText={errors.institution?.message}
+                label="Institution"
               >
                 <Input
-                  id="description"
-                  {...register("description")}
-                  placeholder="Description (optional)"
+                  id="institution"
+                  {...register("institution")}
+                  placeholder="Bank or Institution (optional)"
                   type="text"
                 />
               </Field>
 
-              <Field
-                required
-                invalid={!!errors.balance}
-                errorText={errors.balance?.message}
-                label="Initial Balance"
-              >
-                <Controller
-                  name="balance"
-                  control={control}
-                  rules={{ required: "Initial balance is required" }}
-                  render={({ field }) => (
-                    <NumberInput
-                      step={0.01}
-                      value={field.value}
-                      onChange={(value) => field.onChange(value)}
-                    />
-                  )}
-                />
-              </Field>
+              {/* El balance ahora se calcula automáticamente basado en las transacciones */}
 
               <Field
                 required
-                invalid={!!errors.type}
-                errorText={errors.type?.message}
+                invalid={!!errors.account_type}
+                errorText={errors.account_type?.message}
                 label="Account Type"
               >
                 <Select
-                  id="type"
-                  {...register("type", {
+                  id="account_type"
+                  {...register("account_type", {
                     required: "Account type is required.",
                   })}
+                  disabled={isLoadingAccountTypes}
                 >
-                  <option value="checking">Checking</option>
-                  <option value="savings">Savings</option>
-                  <option value="credit">Credit Card</option>
-                  <option value="investment">Investment</option>
-                  <option value="cash">Cash</option>
-                  <option value="other">Other</option>
+                  {isLoadingAccountTypes ? (
+                    <option value="">Cargando tipos de cuenta...</option>
+                  ) : accountTypes.length === 0 ? (
+                    <>
+                      <option value="checking">Checking</option>
+                      <option value="savings">Savings</option>
+                      <option value="credit">Credit Card</option>
+                      <option value="investment">Investment</option>
+                      <option value="cash">Cash</option>
+                      <option value="other">Other</option>
+                    </>
+                  ) : (
+                    accountTypes.map((type: { name: string; value: string }) => (
+                      <option key={type.value} value={type.value}>
+                        {type.name}
+                      </option>
+                    ))
+                  )}
                 </Select>
               </Field>
 
@@ -219,39 +188,45 @@ const AddAccount = ({ isOpen: externalIsOpen, onOpenChange }: AddAccountProps = 
                     required: "Currency is required.",
                   })}
                   placeholder="Select currency"
+                  disabled={isLoadingCurrencies}
                 >
-                  {currencies?.data?.map((currency: any) => (
-                    <option key={currency.id} value={currency.id}>
-                      {currency.code} - {currency.name}
-                    </option>
-                  ))}
+                  {isLoadingCurrencies ? (
+                    <option value="">Loading currencies...</option>
+                  ) : currencies.length === 0 ? (
+                    <option value="">No currencies available</option>
+                  ) : (
+                    currencies.map((currency) => (
+                      <option key={currency.id} value={currency.id}>
+                        {currency.code} - {currency.name}
+                      </option>
+                    ))
+                  )}
                 </Select>
               </Field>
             </div>
           </DialogBody>
 
           <DialogFooter gap={2}>
-            <DialogActionTrigger asChild>
-              <Button
-                variant="subtle"
-                colorPalette="gray"
-                disabled={isSubmitting}
-              >
-                Cancel
-              </Button>
-            </DialogActionTrigger>
+            <Button
+              variant="subtle"
+              colorPalette="gray"
+              type="button"
+              disabled={isSubmitting}
+              onClick={() => handleOpenChange(false)}
+            >
+              Cancel
+            </Button>
             <Button
               variant="solid"
               colorPalette="blue"
               type="submit"
-              disabled={!isValid}
+              disabled={!isValid || isSubmitting}
               loading={isSubmitting}
             >
               Save
             </Button>
           </DialogFooter>
         </form>
-        <DialogCloseTrigger />
       </DialogContent>
     </DialogRoot>
   );

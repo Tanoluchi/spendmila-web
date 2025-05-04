@@ -5,15 +5,16 @@ import { request as __request } from "../core/request";
 export interface PaymentMethod {
   id: string;
   name: string;
-  type: string;
-  is_default: boolean;
-  user_id: string;
+  description?: string;
+  payment_method_type: string;
+  is_active: boolean;
 }
 
 export interface CreatePaymentMethodRequest {
   name: string;
-  type: string;
-  is_default?: boolean;
+  description?: string;
+  payment_method_type: string;
+  is_active?: boolean;
 }
 
 export class PaymentMethodService {

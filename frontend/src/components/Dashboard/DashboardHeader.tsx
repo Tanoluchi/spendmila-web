@@ -4,12 +4,13 @@ import CatMascot from "@/components/Landing/CatMascot"
 import { ThemeToggle } from '@/components/ThemeToggle';
 import AddTransaction from '@/components/Modals/AddTransaction';
 import type { UserPublic } from "@/client";
-import { Plus } from 'lucide-react';
-import { useMatchRoute } from '@tanstack/react-router';
+import { Plus, ArrowLeft } from 'lucide-react';
+import { useMatchRoute, useNavigate } from '@tanstack/react-router';
 
 const DashboardHeader = ({ currentUser }: { currentUser: UserPublic | null }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const matchRoute = useMatchRoute();
+  const navigate = useNavigate();
   
   // Check if the current route is the Transactions page
   const isTransactionsPage = matchRoute({ to: "/dashboard/transactions" });
@@ -25,9 +26,17 @@ const DashboardHeader = ({ currentUser }: { currentUser: UserPublic | null }) =>
       </div>
       <div className="flex mt-4 md:mt-0 gap-4 items-center">
         <ThemeToggle />
-        {!isTransactionsPage && (
+        {isTransactionsPage ? (
           <button 
-            className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-md inline-flex items-center gap-2 z-10"
+            className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-md inline-flex items-center gap-2 shadow-md"
+            onClick={() => navigate({ to: "/dashboard" })}
+          >
+            <ArrowLeft size={16} />
+            Back to Dashboard
+          </button>
+        ) : (
+          <button 
+            className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-md inline-flex items-center gap-2 shadow-md"
             onClick={() => setIsModalOpen(true)}
           >
             <Plus size={16} />

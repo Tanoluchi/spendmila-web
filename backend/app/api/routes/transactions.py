@@ -45,18 +45,22 @@ def read_transactions(
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(10, ge=1, le=100, description="Number of items per page"),
     transaction_type: Optional[TransactionType] = None,
-    category_name: Optional[str] = None
+    category_name: Optional[str] = None,
+    account_id: Optional[str] = None
 ) -> Any:
     """
     Retrieve transactions (incomes and expenses) for the current user.
-    Supports pagination and filtering by transaction type and category name.
+    Supports pagination and filtering by transaction type, category name, and account ID.
     """
     # Get total count for pagination
+    account_uuid = uuid.UUID(account_id) if account_id else None
+    
     total_count = crud_transaction.get_transaction_count(
         session=session, 
         user_id=current_user.id,
         transaction_type=transaction_type,
-        category_name=category_name
+        category_name=category_name,
+        account_id=account_uuid
     )
     
     # Calculate pagination values
@@ -72,6 +76,7 @@ def read_transactions(
         user_id=current_user.id,
         transaction_type=transaction_type,
         category_name=category_name,
+        account_id=account_uuid,
         skip=(page - 1) * page_size,
         limit=page_size
     )

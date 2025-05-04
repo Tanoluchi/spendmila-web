@@ -11,27 +11,54 @@ interface Category {
   is_active: boolean;
 }
 
+// Define Account interface locally
+interface Account {
+  id: string;
+  name: string;
+  account_type: string;
+  balance: number;
+  institution?: string;
+  is_default: boolean;
+}
+
 interface TransactionFiltersProps {
   categoryFilter: string;
   timeFilter: string;
+  accountFilter: string;
   categories: Category[];
+  accounts: Account[];
   onCategoryChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
   onTimeFilterChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
+  onAccountFilterChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
   isLoading: boolean;
 }
 
 const TransactionFilters: React.FC<TransactionFiltersProps> = ({
   categoryFilter,
   timeFilter,
+  accountFilter,
   categories,
+  accounts,
   onCategoryChange,
   onTimeFilterChange,
+  onAccountFilterChange,
   isLoading
 }) => {
   return (
-    <div className="flex justify-between items-center mb-6">
+    <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-3">
       <h3 className="text-lg font-medium dark:text-gray-200">Transaction History</h3>
-      <div className="flex gap-3">
+      <div className="flex flex-wrap gap-3">
+        <select 
+          className="bg-background dark:text-gray-200 border border-input rounded-md px-3 py-2 text-sm shadow-sm"
+          value={accountFilter}
+          onChange={onAccountFilterChange}
+          disabled={isLoading}
+        >
+          <option value="ALL">All Accounts</option>
+          {accounts.map(account => (
+            <option key={account.id} value={account.id}>{account.name}</option>
+          ))}
+        </select>
         <select 
           className="bg-background dark:text-gray-200 border border-input rounded-md px-3 py-2 text-sm shadow-sm"
           value={categoryFilter}

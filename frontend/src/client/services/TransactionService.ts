@@ -75,27 +75,35 @@ export class TransactionService {
    * @param page Page number (1-indexed)
    * @param pageSize Number of items per page
    * @param categoryName Optional category name filter
+   * @param accountId Optional account ID filter
    * @returns PaginatedTransactionsResponse Successful Response
    * @throws ApiError
    */
   public static getTransactions(
     page: number = 1, 
     pageSize: number = 10,
-    categoryName?: string
+    categoryName?: string,
+    accountId?: string
   ): CancelablePromise<PaginatedTransactionsResponse> {
-    const query: Record<string, any> = {
+    // Build query parameters
+    const params: Record<string, any> = {
       page,
-      page_size: pageSize,
+      page_size: pageSize
     };
-    
-    if (categoryName && categoryName !== 'ALL') {
-      query.category_name = categoryName;
+
+    // Add optional filters if provided
+    if (categoryName) {
+      params.category_name = categoryName;
     }
-    
+
+    if (accountId) {
+      params.account_id = accountId;
+    }
+
     return __request(OpenAPI, {
       method: "GET",
       url: "/api/v1/transactions/",
-      query,
+      query: params,
       errors: {
         422: "Validation Error",
       },

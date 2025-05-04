@@ -14,6 +14,8 @@ from app.models.user import User
 from app.models.debt import Debt
 from app.models.financial_goal import FinancialGoal
 from app.models.subscription import Subscription
+from app.models.payment_method import PaymentMethod
+from app.models.category import Category
 from app.schemas.user import UserCreate
 from app.schemas.currency import CurrencyCreate
 from app.schemas.category import CategoryCreate
@@ -59,39 +61,72 @@ def clear_existing_data(session: Session) -> None:
     statement = select(User).where(User.email != settings.FIRST_SUPERUSER)
     users = session.exec(statement).all()
     
+    # Delete all test users and their related data
     for user in users:
         logger.info(f"Deleting data for user: {user.email}")
         
         # Delete transactions
         transactions = transaction_crud.get_transactions(session=session, user_id=user.id)
         for transaction in transactions:
+            logger.info(f"Deleting transaction: {transaction.id}")
             transaction_crud.delete_transaction(session=session, db_transaction=transaction)
         
         # Delete accounts
         accounts = account_crud.get_accounts(db=session, user_id=user.id)
         for account in accounts:
+            logger.info(f"Deleting account: {account.id}")
             account_crud.delete_account(db=session, account_id=account.id)
         
         # Delete debts
         statement = select(Debt).where(Debt.user_id == user.id)
         debts = session.exec(statement).all()
         for debt in debts:
+            logger.info(f"Deleting debt: {debt.id}")
             session.delete(debt)
         
         # Delete financial goals
         statement = select(FinancialGoal).where(FinancialGoal.user_id == user.id)
         goals = session.exec(statement).all()
         for goal in goals:
+            logger.info(f"Deleting financial goal: {goal.id}")
             session.delete(goal)
         
         # Delete subscriptions
         statement = select(Subscription).where(Subscription.user_id == user.id)
         subscriptions = session.exec(statement).all()
         for subscription in subscriptions:
+            logger.info(f"Deleting subscription: {subscription.id}")
             session.delete(subscription)
+        
+        # Delete payment methods
+        statement = select(PaymentMethod).where(PaymentMethod.id != None)
+        payment_methods = session.exec(statement).all()
+        for payment_method in payment_methods:
+            logger.info(f"Deleting payment method: {payment_method.id}")
+            session.delete(payment_method)
+        
+        # Finally delete the user
+        logger.info(f"Deleting user: {user.id}")
+        session.delete(user)
+    
+    # Delete all categories
+    logger.info("Deleting all categories...")
+    statement = select(Category).where(Category.id != None)
+    categories = session.exec(statement).all()
+    for category in categories:
+        logger.info(f"Deleting category: {category.id} - {category.name}")
+        session.delete(category)
     
     # Commit all deletions
     session.commit()
+    
+    # Reset the created_ids dictionary to ensure we don't reference stale data
+    for key in created_ids:
+        if isinstance(created_ids[key], dict):
+            created_ids[key] = {}
+        elif isinstance(created_ids[key], list):
+            created_ids[key] = []
+    
     logger.info("Existing data cleared successfully")
 
 
@@ -189,8 +224,12 @@ def create_test_users(session: Session) -> None:
 
 
 def create_test_payment_methods(session: Session) -> None:
-    """Create test payment methods."""
-    logger.info("Creating test payment methods...")
+    """Create test payment methods.
+    
+    Payment methods are global entities created by administrators.
+    Users can only select from existing payment methods.
+    """
+    logger.info("Creating global payment methods...")
     
     payment_methods = [
         {"name": "Credit Card", "description": "Visa, Mastercard, etc.", "payment_method_type": PaymentMethodType.CARD},
@@ -200,23 +239,27 @@ def create_test_payment_methods(session: Session) -> None:
         {"name": "Digital Wallet", "description": "PayPal, Venmo, etc.", "payment_method_type": PaymentMethodType.OTHER},
     ]
     
+    # Create global payment methods (not associated with specific users)
     for method_data in payment_methods:
+        # Check if payment method already exists
+        method_name = method_data['name']
+        if method_name in created_ids["payment_methods"]:
+            logger.info(f"Payment method {method_name} already exists")
+            continue
+            
         # Create payment method schema
         payment_method = PaymentMethodCreate(**method_data)
         
-        # Create payment method for each user
-        for email, user_id in created_ids["users"].items():
-            db_payment_method = payment_method_crud.create_payment_method(
-                session=session, 
-                payment_method_in=payment_method,
-                user_id=user_id
-            )
+        # Create global payment method
+        db_payment_method = payment_method_crud.create_payment_method(
+            session=session, 
+            payment_method_in=payment_method
+        )
             
-            # Store with composite key for reference
-            key = f"{email}:{method_data['name']}"
-            created_ids["payment_methods"][key] = db_payment_method.id
-        
-    logger.info(f"Created payment methods for {len(created_ids['users'])} users")
+        # Store with name as key for reference
+        created_ids["payment_methods"][method_name] = db_payment_method.id
+    
+    logger.info(f"Created {len(created_ids['payment_methods'])} global payment methods")
 
 
 def create_test_accounts(session: Session) -> None:
@@ -261,42 +304,46 @@ def create_test_debts(session: Session) -> None:
     
     debts = [
         {
-            "name": "Car Loan", 
-            "description": "Auto loan for Honda", 
-            "total_amount": 15000.00,
-            "remaining_amount": 10000.00,
+            "creditor_name": "Auto Finance Bank",
+            "description": "Auto loan for Honda",
+            "amount": 15000.00,
             "interest_rate": 4.5,
+            "minimum_payment": 450.00,
             "due_date": datetime.date.today().replace(day=15),
             "currency_code": "USD",
             "debt_type": "auto",
-            "status": "in_progress",
-            "installment_count": 36,
-            # Campos adicionales requeridos por el modelo Debt
-            "creditor_name": "Auto Finance Bank",
-            "amount": 15000.00,
-            "is_active": True
+            "is_installment": True,
+            "total_installments": 36,
+            "start_date": datetime.date.today() - datetime.timedelta(days=180)
         },
         {
-            "name": "Student Loan", 
-            "description": "Federal student loan", 
-            "total_amount": 25000.00,
-            "remaining_amount": 18000.00,
+            "creditor_name": "Federal Student Aid",
+            "description": "Federal student loan",
+            "amount": 25000.00,
             "interest_rate": 5.0,
+            "minimum_payment": 350.00,
             "due_date": datetime.date.today().replace(day=1),
             "currency_code": "USD",
             "debt_type": "student",
-            "status": "in_progress",
-            "installment_count": 60,
-            # Campos adicionales requeridos por el modelo Debt
-            "creditor_name": "Federal Student Aid",
-            "amount": 25000.00,
-            "is_active": True
+            "is_installment": True,
+            "total_installments": 60,
+            "start_date": datetime.date.today() - datetime.timedelta(days=365)
+        },
+        {
+            "creditor_name": "Credit Card Company",
+            "description": "Credit card debt",
+            "amount": 3500.00,
+            "interest_rate": 18.99,
+            "minimum_payment": 100.00,
+            "due_date": datetime.date.today().replace(day=20),
+            "currency_code": "USD",
+            "debt_type": "credit_card",
+            "is_installment": False
         },
     ]
     
     for debt_data in debts:
         currency_code = debt_data.pop("currency_code")
-        currency_id = created_ids["currencies"][currency_code]
         
         # Create debt for each user
         for email, user_id in created_ids["users"].items():
@@ -304,9 +351,11 @@ def create_test_debts(session: Session) -> None:
             account_key = f"{email}:Checking Account"
             account_id = created_ids["accounts"].get(account_key)
             
+            # Create a copy of the debt data to avoid modifying the original
+            debt_copy = debt_data.copy()
+            
             debt = DebtCreate(
-                **debt_data,
-                currency_id=currency_id,
+                **debt_copy,
                 account_id=account_id
             )
             
@@ -317,7 +366,7 @@ def create_test_debts(session: Session) -> None:
             )
             
             # Store with composite key for reference
-            key = f"{email}:{debt_data['name']}"
+            key = f"{email}:{debt_data['creditor_name']}"
             created_ids["debts"][key] = db_debt.id
         
     logger.info(f"Created debts for {len(created_ids['users'])} users")
@@ -505,9 +554,9 @@ def create_test_transactions(session: Session) -> None:
     
     # Create transactions for each user
     for email, user_id in created_ids["users"].items():
-        # Get user's accounts and payment methods
+        # Get user's accounts 
         user_accounts = [key for key in created_ids["accounts"] if key.startswith(f"{email}:")]
-        user_payment_methods = [key for key in created_ids["payment_methods"] if key.startswith(f"{email}:")]
+        # Payment methods are now global, not user-specific
         
         # Generate transactions for the past 3 months
         current_date = start_date
@@ -518,7 +567,7 @@ def create_test_transactions(session: Session) -> None:
             if current_date.day == 1:
                 income_template = transaction_templates[0]  # Salary
                 account_key = f"{email}:Checking Account"
-                payment_method_key = f"{email}:Bank Transfer"
+                payment_method_key = "Bank Transfer"
                 
                 transaction = TransactionCreate(
                     description=income_template["description"],
@@ -542,7 +591,7 @@ def create_test_transactions(session: Session) -> None:
             if current_date.day == 5:
                 rent_template = transaction_templates[2]  # Rent
                 account_key = f"{email}:Checking Account"
-                payment_method_key = f"{email}:Bank Transfer"
+                payment_method_key = "Bank Transfer"
                 
                 transaction = TransactionCreate(
                     description=rent_template["description"],
@@ -566,7 +615,7 @@ def create_test_transactions(session: Session) -> None:
             if current_date.weekday() == 5:  # Saturday
                 grocery_template = transaction_templates[3]  # Groceries
                 account_key = f"{email}:Checking Account"
-                payment_method_key = f"{email}:Debit Card"
+                payment_method_key = "Debit Card"
                 
                 transaction = TransactionCreate(
                     description=grocery_template["description"],
@@ -590,7 +639,7 @@ def create_test_transactions(session: Session) -> None:
             if current_date.day == 15:
                 for bill_template in [transaction_templates[4], transaction_templates[5]]:  # Electricity & Internet
                     account_key = f"{email}:Checking Account"
-                    payment_method_key = f"{email}:Credit Card"
+                    payment_method_key = "Credit Card"
                     
                     transaction = TransactionCreate(
                         description=bill_template["description"],
@@ -622,7 +671,8 @@ def create_test_transactions(session: Session) -> None:
                 
                 # Pick random account and payment method
                 account_key = random.choice(user_accounts)
-                payment_method_key = random.choice(user_payment_methods)
+                payment_method_keys = list(created_ids["payment_methods"].keys())
+                payment_method_key = random.choice(payment_method_keys)
                 
                 transaction = TransactionCreate(
                     description=template["description"],
@@ -648,19 +698,24 @@ def create_test_transactions(session: Session) -> None:
         logger.info(f"Created {transaction_count} transactions for user {email}")
 
 
-def populate_test_data() -> None:
-    """Main function to populate test data."""
-    if not is_development_environment():
-        logger.warning("Not a development environment. Skipping test data population.")
+def populate_test_data(force: bool = False) -> None:
+    """Main function to populate test data.
+    
+    Args:
+        force: If True, will populate test data even in non-development environments.
+    """
+    # Only run in development environment unless forced
+    if not force and not is_development_environment():
+        logger.warning("Not in development environment. Skipping test data population.")
         return
     
     logger.info("Starting test data population...")
     
     with Session(engine) as session:
-        # Clear existing data first
+        # Always clear existing data first
         clear_existing_data(session)
         
-        # Create test data in the correct order to maintain relationships
+        # Create new test data
         create_test_currencies(session)
         create_test_categories(session)
         create_test_users(session)
@@ -670,14 +725,21 @@ def populate_test_data() -> None:
         create_test_financial_goals(session)
         create_test_subscriptions(session)
         create_test_transactions(session)
-        
-    logger.info("Test data population completed successfully!")
+    
+    logger.info("Test data population completed successfully.")
 
 
 def main() -> None:
     """Main entry point."""
+    import sys
+    
     logger.info("Checking environment and populating test data if needed")
-    populate_test_data()
+    
+    # Check if --force flag is provided
+    force = "--force" in sys.argv
+    
+    # Always populate test data, clearing existing data first
+    populate_test_data(force=force)
 
 
 if __name__ == "__main__":

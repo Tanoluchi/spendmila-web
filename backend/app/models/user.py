@@ -5,7 +5,6 @@ from pydantic import EmailStr, ConfigDict
 from sqlmodel import Field, Relationship, SQLModel
 
 from .enums import SubscriptionType
-from .payment_method import PaymentMethod
 
 # Cyclic imports
 if TYPE_CHECKING:
@@ -15,7 +14,6 @@ if TYPE_CHECKING:
     from .subscription import Subscription
     from .debt import Debt
     from .account import Account
-    from .payment_method import PaymentMethod
 
 # Forward references for runtime
 Currency = ForwardRef("Currency")
@@ -24,7 +22,6 @@ FinancialGoal = ForwardRef("FinancialGoal")
 Subscription = ForwardRef("Subscription")
 Debt = ForwardRef("Debt")
 Account = ForwardRef("Account")
-PaymentMethod = ForwardRef("PaymentMethod")
 
 # Base model with shared properties
 class UserBase(SQLModel):
@@ -54,7 +51,7 @@ class User(UserBase, table=True):
     subscriptions: List[Subscription] = Relationship(back_populates="user")
     debts: List[Debt] = Relationship(back_populates="user")
     accounts: List[Account] = Relationship(back_populates="user")
-    payment_methods: List[PaymentMethod] = Relationship(back_populates="user")
+    # Eliminada la relación con payment_methods ya que ahora son entidades globales
 
 # Update forward references at the end of the file
 User.model_rebuild()

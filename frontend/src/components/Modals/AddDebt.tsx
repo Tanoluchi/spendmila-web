@@ -2,10 +2,10 @@ import * as React from "react"
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query"
 import { type SubmitHandler, useForm, Controller } from "react-hook-form"
 import { useState } from "react"
-import { Plus } from "lucide-react"
+import { Plus, CreditCard, DollarSign, Calendar, Percent } from "lucide-react"
 
 import { Button } from "../ui/button-tailwind"
-import { Input, Select } from "../ui/input-tailwind"
+import { Input, Select, Checkbox } from "../ui/input-tailwind"
 import { NumberInput } from "../ui/number-input-tailwind"
 import { Text } from "../ui/text-tailwind"
 import { format } from "date-fns"
@@ -25,37 +25,22 @@ import {
   DialogTitle
 } from "../ui/dialog-tailwind"
 import { Field } from "../ui/field-tailwind"
+import { DebtService } from "@/client/services/DebtService"
+import { AccountService } from "@/client/services/AccountService"
 
-// This would be defined in your client/types.gen.ts
+// Updated to match the backend schema
 interface DebtCreate {
-  name: string;
+  creditor_name: string;
   description?: string;
-  total_amount: number;
-  remaining_amount: number;
+  amount: number;
   interest_rate?: number;
+  minimum_payment?: number;
   due_date: string;
-  type: string;
-  status: string;
-  currency_id: string;
+  debt_type: string;
+  account_id?: string;
+  is_installment: boolean;
+  total_installments?: number;
 }
-
-// Mock service for now - would be replaced with actual service from SDK
-const DebtService = {
-  createDebt: async (data: { requestBody: DebtCreate }) => {
-    // This would call the actual API endpoint
-    return fetch('/api/v1/debts/', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('access_token')}`
-      },
-      body: JSON.stringify(data.requestBody)
-    }).then(res => {
-      if (!res.ok) throw new Error('Failed to create debt');
-      return res.json();
-    });
-  }
-};
 
 interface AddDebtProps {
   isOpen?: boolean;

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus } from 'lucide-react';
 import AddTransaction from '@/components/Modals/AddTransaction';
 import useTransactions from '@/hooks/useTransactions';
@@ -15,9 +15,19 @@ import TransactionPagination from '@/components/Transactions/TransactionPaginati
 function Transactions() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState<string>('ALL');
+  const [accountFilter, setAccountFilter] = useState<string>('ALL');
   const [timeFilter, setTimeFilter] = useState<string>('this-month');
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [pageSize, setPageSize] = useState<number>(10);
+  
+  // Get URL parameters for filtering
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const accountId = urlParams.get('accountId');
+    if (accountId) {
+      setAccountFilter(accountId);
+    }
+  }, []);
   
   // Fetch transactions data with pagination and category filter
   const { 
@@ -26,7 +36,7 @@ function Transactions() {
     totalPages,
     isLoading, 
     error 
-  } = useTransactions(categoryFilter, currentPage, pageSize);
+  } = useTransactions(categoryFilter, accountFilter, currentPage, pageSize);
   
   const { accounts } = useAccounts();
   const { categories, isLoading: categoriesLoading } = useCategories();
@@ -40,6 +50,12 @@ function Transactions() {
   // Handle category filter change
   const handleCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setCategoryFilter(e.target.value);
+    setCurrentPage(1); // Reset to first page when changing filters
+  };
+
+  // Handle account filter change
+  const handleAccountFilterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setAccountFilter(e.target.value);
     setCurrentPage(1); // Reset to first page when changing filters
   };
 
@@ -85,9 +101,12 @@ function Transactions() {
         {/* Transaction Filters */}
         <TransactionFilters 
           categoryFilter={categoryFilter}
+          accountFilter={accountFilter}
           timeFilter={timeFilter}
           categories={categories}
+          accounts={accounts}
           onCategoryChange={handleCategoryChange}
+          onAccountFilterChange={handleAccountFilterChange}
           onTimeFilterChange={handleTimeFilterChange}
           isLoading={categoriesLoading}
         />
@@ -100,16 +119,20 @@ function Transactions() {
           accounts={accounts}
         />
         
-        {/* Transaction Pagination */}
-        <TransactionPagination 
-          currentPage={currentPage}
-          totalPages={totalPages}
-          pageSize={pageSize}
-          totalTransactions={totalTransactions}
-          visibleTransactions={filteredTransactions.length}
-          onPageChange={handlePageChange}
-          onPageSizeChange={handlePageSizeChange}
-        />
+        {/* Pagination */}
+        {!isLoading && totalPages > 1 && (
+          <div className="mt-6">
+            <TransactionPagination 
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={handlePageChange}
+              pageSize={pageSize}
+              onPageSizeChange={handlePageSizeChange}
+              totalTransactions={totalTransactions}
+              visibleTransactions={filteredTransactions.length}
+            />
+          </div>
+        )}
       </div>
     </div>
   );

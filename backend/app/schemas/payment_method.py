@@ -19,7 +19,6 @@ class PaymentMethodBase(SQLModel):
 class PaymentMethodRead(PaymentMethodBase):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     id: uuid.UUID
-    user_id: uuid.UUID
 
 
 class PaymentMethodCreate(PaymentMethodBase):
@@ -47,5 +46,17 @@ class PaymentMethodsPublic(SQLModel):
 
 
 class PaymentMethodReadWithDetails(PaymentMethodRead):
-    model_config = ConfigDict(arbitrary_types_allowed=True)
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+        json_schema_extra={
+            "example": {
+                "name": "Credit Card",
+                "description": "Visa credit card",
+                "payment_method_type": "card",
+                "is_active": True,
+                "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                "transactions": []
+            }
+        }
+    )
     transactions: List[dict] = [] 

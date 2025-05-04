@@ -1,4 +1,5 @@
 import uuid
+import datetime
 from typing import TYPE_CHECKING, Optional, ForwardRef, List
 
 from pydantic import ConfigDict
@@ -29,8 +30,8 @@ class AccountBase(SQLModel):
     balance: float = Field(default=0.0)
     institution: Optional[str] = Field(default=None, max_length=150)
     icon: Optional[str] = Field(default=None, max_length=255)  # Icon for the account
-    color: Optional[str] = Field(default=None, max_length=50)  # Color code for the account
     is_default: bool = Field(default=False)  # Whether this is the default account
+    created_at: datetime.datetime = Field(default_factory=datetime.datetime.now)
 
     # Foreign Keys
     user_id: uuid.UUID = Field(foreign_key="user.id", index=True)

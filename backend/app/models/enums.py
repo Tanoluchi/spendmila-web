@@ -75,6 +75,10 @@ class AccountType(str, Enum):
     BANK = "bank"
     DIGITAL = "digital"
     CASH = "cash"
+    CREDIT = "credit"
+    INVESTMENT = "investment"
+    SAVINGS = "savings"
+    CHECKING = "checking"
     OTHER = "other"
 
 
@@ -91,3 +95,4 @@ class TransactionType(str, Enum):
     """Type of transaction."""
     INCOME = "income"
     EXPENSE = "expense"
+    TRANSFER = "transfer"

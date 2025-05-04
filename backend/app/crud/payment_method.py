@@ -13,16 +13,17 @@ def get_payment_method(*, session: Session, payment_method_id: uuid.UUID) -> Pay
 
 def get_payment_methods(*, session: Session) -> Sequence[PaymentMethod]:
     """Get multiple payment methods."""
-    # Consider adding filtering by user if payment methods become user-specific
+    # Payment methods are global entities managed by admins
     statement = select(PaymentMethod)
     return session.exec(statement).all()
 
-def create_payment_method(*, session: Session, payment_method_in: PaymentMethodCreate, user_id: uuid.UUID) -> PaymentMethod:
-    """Create a new payment method."""
-    # Consider adding user_id if they become user-specific
+def create_payment_method(*, session: Session, payment_method_in: PaymentMethodCreate) -> PaymentMethod:
+    """Create a new payment method.
+    
+    Only administrators should be able to create payment methods as they are global entities.
+    """
     payment_method_data = payment_method_in.model_dump()
-    payment_method_data["user_id"] = user_id
-
+    
     db_pm = PaymentMethod.model_validate(payment_method_data)
     session.add(db_pm)
     session.commit()

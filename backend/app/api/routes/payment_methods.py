@@ -24,26 +24,31 @@ def create_payment_method(
 ) -> PaymentMethod:
     """
     Create a new payment method.
-    (Requires authenticated user. Consider if superuser only?)
+    (Requires superuser privileges as payment methods are global entities)
     """
-    # Currently, payment methods are global. If they become user-specific,
-    # the create function in crud would need the user_id.
+    # Verify the user is a superuser
+    if not current_user.is_superuser:
+        raise HTTPException(
+            status_code=403,
+            detail="Only administrators can create payment methods"
+        )
+    
+    # Payment methods are now global entities without user association
     return payment_method.create_payment_method(
         session=session, 
-        payment_method_in=pm_in, 
-        user_id=current_user.id
+        payment_method_in=pm_in
     )
 
 
 @router.get("/", response_model=Sequence[PaymentMethodRead])
 def read_payment_methods(
-    session: SessionDep
+    session: SessionDep, current_user: CurrentUser
 ) -> Any:
     """
-    Retrieve payment methods.
+    Retrieve all available payment methods.
     (Requires authenticated user)
     """
-    # Currently retrieves all. Add filtering by user if they become user-specific.
+    # Payment methods are global entities available to all users
     pms = payment_method.get_payment_methods(session=session)
     return pms
 
@@ -67,18 +72,24 @@ def read_payment_method_by_id(
 def update_payment_method(
     *,
     session: SessionDep,
-    current_user: CurrentUser, # Consider superuser only?
+    current_user: CurrentUser,
     pm_id: uuid.UUID,
     pm_in: PaymentMethodUpdate,
 ) -> Any:
     """
     Update a payment method.
-    (Requires authenticated user. Consider superuser only?)
+    (Requires superuser privileges as payment methods are global entities)
     """
+    # Verify the user is a superuser
+    if not current_user.is_superuser:
+        raise HTTPException(
+            status_code=403,
+            detail="Only administrators can update payment methods"
+        )
+        
     db_pm = payment_method.get_payment_method(session=session, payment_method_id=pm_id)
     if not db_pm:
         raise HTTPException(status_code=404, detail="Payment Method not found")
-    # Add ownership/permission check here if needed
 
     return payment_method.update_payment_method(session=session, db_pm=db_pm, pm_in=pm_in)
 
@@ -87,17 +98,23 @@ def update_payment_method(
 def delete_payment_method(
     *,
     session: SessionDep,
-    current_user: CurrentUser, # Consider superuser only?
+    current_user: CurrentUser,
     pm_id: uuid.UUID,
 ) -> Message:
     """
     Delete a payment method.
-    (Requires authenticated user. Consider superuser only?)
+    (Requires superuser privileges as payment methods are global entities)
     """
+    # Verify the user is a superuser
+    if not current_user.is_superuser:
+        raise HTTPException(
+            status_code=403,
+            detail="Only administrators can delete payment methods"
+        )
+        
     db_pm = payment_method.get_payment_method(session=session, payment_method_id=pm_id)
     if not db_pm:
         raise HTTPException(status_code=404, detail="Payment Method not found")
-    # Add ownership/permission check here if needed
 
     # Consider adding logic to prevent deletion if the payment method is in use
     try:

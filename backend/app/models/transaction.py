@@ -38,7 +38,7 @@ class TransactionBase(SQLModel):
     # Foreign Keys
     user_id: uuid.UUID = Field(foreign_key="user.id", index=True)
     category_id: uuid.UUID = Field(default=None, foreign_key="category.id", index=True)
-    payment_method_id: uuid.UUID = Field(default=None, foreign_key="payment_method.id", index=True)
+    payment_method_id: uuid.UUID = Field(foreign_key="payment_method.id", index=True)
     currency_id: uuid.UUID = Field(foreign_key="currency.id", index=True)
     account_id: Optional[uuid.UUID] = Field(default=None, foreign_key="account.id", index=True)
     subscription_id: Optional[uuid.UUID] = Field(default=None, foreign_key="subscription.id", index=True)

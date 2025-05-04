@@ -1,8 +1,8 @@
-"""initial
+"""Initial
 
-Revision ID: ad08fbc02c0f
+Revision ID: 3b4748568203
 Revises: 
-Create Date: 2025-05-02 16:19:27.312956
+Create Date: 2025-05-04 16:19:37.552804
 
 """
 from alembic import op
@@ -11,7 +11,7 @@ import sqlmodel.sql.sqltypes
 
 
 # revision identifiers, used by Alembic.
-revision = 'ad08fbc02c0f'
+revision = '3b4748568203'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -40,13 +40,23 @@ def upgrade():
     op.create_index(op.f('ix_currency_code'), 'currency', ['code'], unique=True)
     op.create_index(op.f('ix_currency_id'), 'currency', ['id'], unique=False)
     op.create_index(op.f('ix_currency_name'), 'currency', ['name'], unique=False)
+    op.create_table('payment_method',
+    sa.Column('name', sqlmodel.sql.sqltypes.AutoString(length=100), nullable=False),
+    sa.Column('description', sqlmodel.sql.sqltypes.AutoString(length=255), nullable=True),
+    sa.Column('payment_method_type', sa.Enum('CASH', 'TRANSFER', 'CARD', 'OTHER', name='paymentmethodtype'), nullable=False),
+    sa.Column('is_active', sa.Boolean(), nullable=False),
+    sa.Column('id', sa.Uuid(), nullable=False),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_payment_method_id'), 'payment_method', ['id'], unique=False)
+    op.create_index(op.f('ix_payment_method_name'), 'payment_method', ['name'], unique=True)
     op.create_table('user',
     sa.Column('email', sqlmodel.sql.sqltypes.AutoString(length=255), nullable=False),
     sa.Column('full_name', sqlmodel.sql.sqltypes.AutoString(length=255), nullable=True),
     sa.Column('is_active', sa.Boolean(), nullable=False),
     sa.Column('is_superuser', sa.Boolean(), nullable=False),
     sa.Column('subscription_type', sa.Enum('FREE', 'BASIC', 'PRO', name='subscriptiontype'), nullable=False),
-    sa.Column('default_currency_id', sa.Uuid(), nullable=True),
+    sa.Column('default_currency_id', sa.Uuid(), nullable=False),
     sa.Column('id', sa.Uuid(), nullable=False),
     sa.Column('hashed_password', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
     sa.ForeignKeyConstraint(['default_currency_id'], ['currency.id'], ),
@@ -56,11 +66,10 @@ def upgrade():
     op.create_index(op.f('ix_user_id'), 'user', ['id'], unique=False)
     op.create_table('account',
     sa.Column('name', sqlmodel.sql.sqltypes.AutoString(length=150), nullable=False),
-    sa.Column('account_type', sa.Enum('BANK', 'DIGITAL', 'CASH', 'OTHER', name='accounttype'), nullable=False),
+    sa.Column('account_type', sa.Enum('BANK', 'DIGITAL', 'CASH', 'CREDIT', 'INVESTMENT', 'SAVINGS', 'CHECKING', 'OTHER', name='accounttype'), nullable=False),
     sa.Column('balance', sa.Float(), nullable=False),
     sa.Column('institution', sqlmodel.sql.sqltypes.AutoString(length=150), nullable=True),
     sa.Column('icon', sqlmodel.sql.sqltypes.AutoString(length=255), nullable=True),
-    sa.Column('color', sqlmodel.sql.sqltypes.AutoString(length=50), nullable=True),
     sa.Column('is_default', sa.Boolean(), nullable=False),
     sa.Column('user_id', sa.Uuid(), nullable=False),
     sa.Column('currency_id', sa.Uuid(), nullable=False),
@@ -98,40 +107,31 @@ def upgrade():
     op.create_index(op.f('ix_financial_goal_name'), 'financial_goal', ['name'], unique=False)
     op.create_index(op.f('ix_financial_goal_status'), 'financial_goal', ['status'], unique=False)
     op.create_index(op.f('ix_financial_goal_user_id'), 'financial_goal', ['user_id'], unique=False)
-    op.create_table('payment_method',
-    sa.Column('name', sqlmodel.sql.sqltypes.AutoString(length=100), nullable=False),
-    sa.Column('payment_method_type', sa.Enum('CASH', 'TRANSFER', 'CARD', 'OTHER', name='paymentmethodtype'), nullable=False),
-    sa.Column('description', sqlmodel.sql.sqltypes.AutoString(length=255), nullable=True),
-    sa.Column('user_id', sa.Uuid(), nullable=False),
-    sa.Column('id', sa.Uuid(), nullable=False),
-    sa.ForeignKeyConstraint(['user_id'], ['user.id'], ),
-    sa.PrimaryKeyConstraint('id')
-    )
-    op.create_index(op.f('ix_payment_method_id'), 'payment_method', ['id'], unique=False)
-    op.create_index(op.f('ix_payment_method_name'), 'payment_method', ['name'], unique=False)
-    op.create_index(op.f('ix_payment_method_payment_method_type'), 'payment_method', ['payment_method_type'], unique=False)
-    op.create_index(op.f('ix_payment_method_user_id'), 'payment_method', ['user_id'], unique=False)
     op.create_table('debt',
     sa.Column('creditor_name', sqlmodel.sql.sqltypes.AutoString(length=150), nullable=False),
     sa.Column('amount', sa.Float(), nullable=False),
     sa.Column('due_date', sa.Date(), nullable=True),
     sa.Column('description', sqlmodel.sql.sqltypes.AutoString(length=255), nullable=True),
     sa.Column('is_paid', sa.Boolean(), nullable=False),
-    sa.Column('status', sa.Enum('PENDING', 'IN_PROGRESS', 'PAID', 'DEFAULTED', 'RENEGOTIATED', name='debtstatus'), nullable=False),
     sa.Column('debt_type', sa.Enum('PERSONAL', 'CREDIT_CARD', 'MORTGAGE', 'AUTO', 'STUDENT', 'BUSINESS', 'MEDICAL', 'OTHER', name='debttype'), nullable=False),
     sa.Column('interest_rate', sa.Float(), nullable=True),
     sa.Column('minimum_payment', sa.Float(), nullable=True),
     sa.Column('icon', sqlmodel.sql.sqltypes.AutoString(length=255), nullable=True),
     sa.Column('color', sqlmodel.sql.sqltypes.AutoString(length=50), nullable=True),
-    sa.Column('installment_count', sa.Integer(), nullable=True),
+    sa.Column('paid_amount', sa.Float(), nullable=False),
+    sa.Column('remaining_amount', sa.Float(), nullable=False),
+    sa.Column('payment_progress', sa.Float(), nullable=False),
+    sa.Column('is_installment', sa.Boolean(), nullable=False),
+    sa.Column('total_installments', sa.Integer(), nullable=True),
+    sa.Column('paid_installments', sa.Integer(), nullable=True),
+    sa.Column('remaining_installments', sa.Integer(), nullable=True),
+    sa.Column('start_date', sa.Date(), nullable=True),
     sa.Column('user_id', sa.Uuid(), nullable=False),
-    sa.Column('payment_method_id', sa.Uuid(), nullable=True),
     sa.Column('currency_id', sa.Uuid(), nullable=False),
     sa.Column('account_id', sa.Uuid(), nullable=True),
     sa.Column('id', sa.Uuid(), nullable=False),
     sa.ForeignKeyConstraint(['account_id'], ['account.id'], ),
     sa.ForeignKeyConstraint(['currency_id'], ['currency.id'], ),
-    sa.ForeignKeyConstraint(['payment_method_id'], ['payment_method.id'], ),
     sa.ForeignKeyConstraint(['user_id'], ['user.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
@@ -141,9 +141,8 @@ def upgrade():
     op.create_index(op.f('ix_debt_debt_type'), 'debt', ['debt_type'], unique=False)
     op.create_index(op.f('ix_debt_due_date'), 'debt', ['due_date'], unique=False)
     op.create_index(op.f('ix_debt_id'), 'debt', ['id'], unique=False)
+    op.create_index(op.f('ix_debt_is_installment'), 'debt', ['is_installment'], unique=False)
     op.create_index(op.f('ix_debt_is_paid'), 'debt', ['is_paid'], unique=False)
-    op.create_index(op.f('ix_debt_payment_method_id'), 'debt', ['payment_method_id'], unique=False)
-    op.create_index(op.f('ix_debt_status'), 'debt', ['status'], unique=False)
     op.create_index(op.f('ix_debt_user_id'), 'debt', ['user_id'], unique=False)
     op.create_table('subscription',
     sa.Column('service_name', sqlmodel.sql.sqltypes.AutoString(length=150), nullable=False),
@@ -235,9 +234,8 @@ def downgrade():
     op.drop_index(op.f('ix_subscription_account_id'), table_name='subscription')
     op.drop_table('subscription')
     op.drop_index(op.f('ix_debt_user_id'), table_name='debt')
-    op.drop_index(op.f('ix_debt_status'), table_name='debt')
-    op.drop_index(op.f('ix_debt_payment_method_id'), table_name='debt')
     op.drop_index(op.f('ix_debt_is_paid'), table_name='debt')
+    op.drop_index(op.f('ix_debt_is_installment'), table_name='debt')
     op.drop_index(op.f('ix_debt_id'), table_name='debt')
     op.drop_index(op.f('ix_debt_due_date'), table_name='debt')
     op.drop_index(op.f('ix_debt_debt_type'), table_name='debt')
@@ -245,11 +243,6 @@ def downgrade():
     op.drop_index(op.f('ix_debt_creditor_name'), table_name='debt')
     op.drop_index(op.f('ix_debt_account_id'), table_name='debt')
     op.drop_table('debt')
-    op.drop_index(op.f('ix_payment_method_user_id'), table_name='payment_method')
-    op.drop_index(op.f('ix_payment_method_payment_method_type'), table_name='payment_method')
-    op.drop_index(op.f('ix_payment_method_name'), table_name='payment_method')
-    op.drop_index(op.f('ix_payment_method_id'), table_name='payment_method')
-    op.drop_table('payment_method')
     op.drop_index(op.f('ix_financial_goal_user_id'), table_name='financial_goal')
     op.drop_index(op.f('ix_financial_goal_status'), table_name='financial_goal')
     op.drop_index(op.f('ix_financial_goal_name'), table_name='financial_goal')
@@ -267,6 +260,9 @@ def downgrade():
     op.drop_index(op.f('ix_user_id'), table_name='user')
     op.drop_index(op.f('ix_user_email'), table_name='user')
     op.drop_table('user')
+    op.drop_index(op.f('ix_payment_method_name'), table_name='payment_method')
+    op.drop_index(op.f('ix_payment_method_id'), table_name='payment_method')
+    op.drop_table('payment_method')
     op.drop_index(op.f('ix_currency_name'), table_name='currency')
     op.drop_index(op.f('ix_currency_id'), table_name='currency')
     op.drop_index(op.f('ix_currency_code'), table_name='currency')

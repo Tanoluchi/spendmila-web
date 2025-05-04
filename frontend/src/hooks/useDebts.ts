@@ -75,20 +75,20 @@ export const useDebts = () => {
       return {
         totalDebt: 0,
         monthlyPayments: 0,
-        averageInterestRate: 0,
+        highestInterestRate: 0,
+        highestInterestDebt: null,
         debtTypeBreakdown: {}
       };
     }
 
-    const totalDebt = debtList.reduce((total, debt) => total + debt.balance, 0);
+    const totalDebt = debtList.reduce((total, debt) => total + debt.amount, 0);
     const monthlyPayments = debtList.reduce((total, debt) => total + debt.minimum_payment, 0);
     
-    // Calculate weighted average interest rate
-    const weightedInterestSum = debtList.reduce(
-      (sum, debt) => sum + (debt.interest_rate * debt.balance), 
-      0
+    // Find highest interest rate debt
+    const highestInterestDebt = debtList.reduce(
+      (highest, debt) => (!highest || debt.interest_rate > highest.interest_rate) ? debt : highest, 
+      null as Debt | null
     );
-    const averageInterestRate = weightedInterestSum / totalDebt;
 
     // Group debts by type
     const debtTypeBreakdown = debtList.reduce((acc, debt) => {
@@ -96,37 +96,47 @@ export const useDebts = () => {
       if (!acc[type]) {
         acc[type] = 0;
       }
-      acc[type] += debt.balance;
+      acc[type] += debt.amount;
       return acc;
     }, {} as Record<string, number>);
 
     return {
       totalDebt,
       monthlyPayments,
-      averageInterestRate,
+      highestInterestRate: highestInterestDebt?.interest_rate || 0,
+      highestInterestDebt,
       debtTypeBreakdown
     };
   };
 
-  // Calculate debt payoff strategies
-  const calculatePayoffStrategies = (debtList: Debt[]) => {
+  // Get unique debt types from user debts
+  const getUniqueDebtTypes = (debtList: Debt[]) => {
     if (!debtList || debtList.length === 0) {
-      return {
-        avalanche: [],
-        snowball: []
-      };
+      return [];
     }
 
-    // Avalanche method - sort by highest interest rate first
-    const avalanche = [...debtList].sort((a, b) => b.interest_rate - a.interest_rate);
-    
-    // Snowball method - sort by lowest balance first
-    const snowball = [...debtList].sort((a, b) => a.balance - b.balance);
+    const types = new Set<string>();
+    debtList.forEach(debt => {
+      if (debt.debt_type) {
+        types.add(debt.debt_type);
+      }
+    });
 
-    return {
-      avalanche,
-      snowball
-    };
+    return Array.from(types).sort();
+  };
+
+  // Calculate progress for each debt
+  const calculateDebtProgress = (debt: Debt) => {
+    if (!debt || !debt.amount) return 0;
+    
+    // If we have total_amount and balance, calculate progress
+    if (debt.total_amount && debt.total_amount > 0) {
+      const paid = debt.total_amount - debt.amount;
+      return Math.min(100, Math.round((paid / debt.total_amount) * 100));
+    }
+    
+    // Fallback if we don't have total_amount
+    return 0;
   };
 
   return {
@@ -139,6 +149,7 @@ export const useDebts = () => {
     updateDebt: updateDebtMutation.mutate,
     deleteDebt: deleteDebtMutation.mutate,
     calculateDebtSummary,
-    calculatePayoffStrategies
+    getUniqueDebtTypes,
+    calculateDebtProgress
   };
 };

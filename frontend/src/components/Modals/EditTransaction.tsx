@@ -5,7 +5,6 @@ import { format } from "date-fns"
 
 import { Button } from "../ui/button-tailwind"
 import {
-  DialogActionTrigger,
   DialogTitle,
   DialogBody,
   DialogCloseTrigger,
@@ -29,22 +28,21 @@ import { useSubscriptions } from "@/hooks/useSubscriptions"
 import { useDebts } from "@/hooks/useDebts"
 import { useGoals } from "@/hooks/useGoals"
 import { usePaymentMethods } from "@/hooks/usePaymentMethods"
-import { Category, TransactionService } from "@/client/services/TransactionService"
+import { Category } from "@/client/services/TransactionService"
+import { TransactionService } from "@/client/services/TransactionService"
 import useAuth from "@/hooks/useAuth"
-import { TransactionCreate } from "@/types/transaction"
-import { AddTransactionProps } from "@/types/props"
+import { TransactionCreate, Transaction } from "@/types/transaction"
 
-const AddTransaction = ({ isOpen: externalIsOpen, onOpenChange }: AddTransactionProps = {}) => {
-  const [internalIsOpen, setInternalIsOpen] = useState(false);
+interface EditTransactionProps {
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+  transaction: Transaction | null;
+}
+
+// Transaction type is now imported from '@/types/transaction'
+
+const EditTransaction = ({ isOpen, onOpenChange, transaction }: EditTransactionProps) => {
   const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
-  const isOpen = externalIsOpen !== undefined ? externalIsOpen : internalIsOpen;
-  
-  const handleOpenChange = (open: boolean) => {
-    if (externalIsOpen === undefined) {
-      setInternalIsOpen(open);
-    }
-    onOpenChange?.(open);
-  };
   
   const queryClient = useQueryClient();
   const { showSuccessToast, showErrorToast } = useCustomToast();
@@ -81,42 +79,33 @@ const AddTransaction = ({ isOpen: externalIsOpen, onOpenChange }: AddTransaction
     },
   });
 
-  // Set default currency when the modal opens
+  // Set form values when transaction changes or modal opens
   useEffect(() => {
-    if (isOpen) {
-      // Reset form when modal opens
+    if (isOpen && transaction) {
+      // Extract payment method ID from the relationship if available
+      const paymentMethodId = transaction.payment_method?.id || "";
+      
       reset({
-        description: "",
-        amount: 0,
-        transaction_type: "expense",
-        date: format(new Date(), 'yyyy-MM-dd'),
-        currency_id: user?.default_currency_id || "",
-        category_id: "",
-        payment_method_id: "",
+        description: transaction.description || "",
+        amount: transaction.amount || 0,
+        transaction_type: transaction.transaction_type || "expense",
+        date: transaction.date ? format(new Date(transaction.date), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
+        currency_id: transaction.currency?.id || user?.default_currency_id || "",
+        category_id: transaction.category?.id || "",
+        account_id: transaction.account?.id || "",
+        payment_method_id: paymentMethodId,
+        subscription_id: transaction.subscription?.id || "",
+        financial_goal_id: transaction.financial_goal?.id || "",
+        debt_id: transaction.debt?.id || "",
+        notes: transaction.notes || "",
       });
       
-      if (user?.default_currency_id) {
-        setValue("currency_id", user.default_currency_id);
-      } else if (currencies.length > 0) {
-        // If no default currency is set, use the first available currency
-        setValue("currency_id", currencies[0].id);
-      }
-      
-      // Set default category and payment method if available
-      if (categories.length > 0) {
-        const expenseCategories = categories.filter(c => c.category_type === "expense");
-        if (expenseCategories.length > 0) {
-          setValue("category_id", expenseCategories[0].id);
-        }
-      }
-      
-      if (paymentMethods.length > 0) {
-        // Simplemente seleccionar el primer método de pago disponible
-        // ya que ahora son entidades globales sin "default"
-        setValue("payment_method_id", paymentMethods[0].id);
+      // Show advanced options if any of these fields are populated
+      if (transaction.subscription || transaction.financial_goal || transaction.debt) {
+        setShowAdvancedOptions(true);
       }
     }
-  }, [isOpen, currencies, categories, paymentMethods, setValue, reset, user]);
+  }, [isOpen, transaction, reset, user]);
 
   const transactionType = watch("transaction_type");
   const selectedAccountId = watch("account_id");
@@ -156,31 +145,36 @@ const AddTransaction = ({ isOpen: externalIsOpen, onOpenChange }: AddTransaction
 
   const mutation = useMutation({
     mutationFn: (data: TransactionCreate) => {
+      if (!transaction) return Promise.reject("No transaction to update");
+      
       // Ensure all optional fields that are empty strings are set to undefined
       // This prevents the backend from trying to parse empty strings as UUIDs
+      // Also ensure description is never undefined to satisfy the API requirements
       const cleanedData = {
         ...data,
+        description: data.description || "", // Ensure description is never undefined
         subscription_id: data.subscription_id || undefined,
         financial_goal_id: data.financial_goal_id || undefined,
         debt_id: data.debt_id || undefined,
         account_id: data.account_id || undefined,
       };
       
-      return TransactionService.createTransaction(cleanedData);
+      return TransactionService.updateTransaction(transaction.id, cleanedData);
     },
     onSuccess: () => {
-      showSuccessToast("Transaction created successfully.");
+      showSuccessToast("Transaction updated successfully.");
       reset();
-      handleOpenChange(false);
+      onOpenChange(false);
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
     },
     onError: (err: ApiError) => {
-      console.error("Transaction creation error:", err);
+      console.error("Transaction update error:", err);
       handleError(err, showErrorToast);
     },
   });
 
   const onSubmit: SubmitHandler<TransactionCreate> = (data) => {
+    // No need for finalData since we're already ensuring description is set in the mutation
     mutation.mutate(data);
   };
 
@@ -192,7 +186,8 @@ const AddTransaction = ({ isOpen: externalIsOpen, onOpenChange }: AddTransaction
     // Check if it's from an account
     if (selectedAccountId) {
       const selectedAccount = accounts.find(account => account.id === selectedAccountId);
-      if (selectedAccount && selectedAccount.currency) {
+      // For TypeScript, make sure we safely access the properties
+      if (selectedAccount && selectedAccount.currency && selectedAccount.currency.code) {
         return `${selectedAccount.currency.code} (${selectedAccount.name})`;
       }
     }
@@ -205,6 +200,24 @@ const AddTransaction = ({ isOpen: externalIsOpen, onOpenChange }: AddTransaction
     
     return "Loading...";
   };
+
+  // Get associated debt information if present
+  const getLinkedDebtInfo = () => {
+    const debtId = watch("debt_id");
+    if (!debtId) return null;
+    
+    const linkedDebt = debts.find(debt => debt.id === debtId);
+    if (!linkedDebt) return null;
+    
+    return {
+      name: linkedDebt.creditor_name || 'Unknown',
+      // Ensure numeric values have defaults to prevent undefined errors
+      remaining: typeof linkedDebt.remaining_amount === 'number' ? linkedDebt.remaining_amount : linkedDebt.amount || 0,
+      progress: typeof linkedDebt.payment_progress === 'number' ? linkedDebt.payment_progress : 0
+    };
+  };
+  
+  const linkedDebtInfo = getLinkedDebtInfo();
 
   // Filter categories based on transaction type and remove duplicates
   const filteredCategories = categories.reduce((acc: Category[], category: Category) => {
@@ -228,7 +241,7 @@ const AddTransaction = ({ isOpen: externalIsOpen, onOpenChange }: AddTransaction
   // Handle cancel button click
   const handleCancel = () => {
     reset();
-    handleOpenChange(false);
+    onOpenChange(false);
   };
 
   return (
@@ -236,16 +249,16 @@ const AddTransaction = ({ isOpen: externalIsOpen, onOpenChange }: AddTransaction
       size={{ base: "sm", md: "lg" }}
       placement="center"
       open={isOpen}
-      onOpenChange={({ open }) => handleOpenChange(open)}
+      onOpenChange={({ open }) => onOpenChange(open)}
     >
       <DialogContent className="max-h-[90vh] overflow-y-auto">
         <form onSubmit={handleSubmit(onSubmit)}>
-          <DialogHeader className="sticky top-0 bg-white z-10 pb-2 border-b">
-            <DialogTitle>Add Transaction</DialogTitle>
-            <Text size="sm" className="text-gray-600">Fill in the details to add a new transaction.</Text>
+          <DialogHeader data-testid="edit-transaction-header">
+            <DialogTitle>Edit Transaction</DialogTitle>
+            <Text size="sm" className="text-gray-600 dark:text-gray-300">Update the transaction details.</Text>
           </DialogHeader>
           
-          <DialogBody className="py-4">
+          <DialogBody data-testid="edit-transaction-body">
             {/* Main transaction details */}
             <div className="space-y-4">
               {/* First row: Type and Amount */}
@@ -412,12 +425,36 @@ const AddTransaction = ({ isOpen: externalIsOpen, onOpenChange }: AddTransaction
                 </Field>
               </div>
               
+              {/* Linked Debt Information (if present) */}
+              {linkedDebtInfo && (
+                <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                  <h3 className="font-medium text-blue-700 dark:text-blue-300 mb-2">Linked to Debt</h3>
+                  <div className="flex flex-col gap-1">
+                    <p className="text-sm text-gray-700 dark:text-gray-300">
+                      <span className="font-medium">Creditor:</span> {linkedDebtInfo.name}
+                    </p>
+                    <p className="text-sm text-gray-700 dark:text-gray-300">
+                      <span className="font-medium">Remaining Balance:</span> ${linkedDebtInfo.remaining.toFixed(2)}
+                    </p>
+                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mt-1">
+                      <div 
+                        className="bg-blue-500 h-2 rounded-full" 
+                        style={{ width: `${linkedDebtInfo.progress}%` }}
+                      ></div>
+                    </div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      {linkedDebtInfo.progress}% paid off
+                    </p>
+                  </div>
+                </div>
+              )}
+              
               {/* Optional fields section */}
               {hasOptionalItems && (
-                <div className="mt-6 pt-4 border-t border-gray-200">
+                <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
                   <button
                     type="button"
-                    className="flex items-center text-purple-600 hover:text-purple-800 font-medium mb-4"
+                    className="flex items-center text-purple-600 hover:text-purple-800 font-medium mb-4 dark:text-purple-400 dark:hover:text-purple-300"
                     onClick={() => setShowAdvancedOptions(!showAdvancedOptions)}
                   >
                     <span className="mr-2">{showAdvancedOptions ? '−' : '+'}</span>
@@ -490,7 +527,9 @@ const AddTransaction = ({ isOpen: externalIsOpen, onOpenChange }: AddTransaction
                               <option value="">------</option>
                               {debts.map((debt) => (
                                 <option key={debt.id} value={debt.id}>
-                                  {debt.name || `Debt #${debt.id.substring(0, 8)}`}
+                                  {debt.creditor_name} ({debt.remaining_amount > 0 ? 
+                                    `$${debt.remaining_amount.toFixed(2)} remaining` : 
+                                    'Paid off'})
                                 </option>
                               ))}
                             </Select>
@@ -504,7 +543,7 @@ const AddTransaction = ({ isOpen: externalIsOpen, onOpenChange }: AddTransaction
             </div>
           </DialogBody>
 
-          <DialogFooter gap={2} className="sticky bottom-0 bg-white z-10 pt-2 border-t">
+          <DialogFooter gap={2} data-testid="edit-transaction-footer">
             <Button
               variant="subtle"
               colorPalette="gray"
@@ -521,7 +560,7 @@ const AddTransaction = ({ isOpen: externalIsOpen, onOpenChange }: AddTransaction
               disabled={!isValid || isSubmitting}
               loading={isSubmitting}
             >
-              Save
+              Update
             </Button>
           </DialogFooter>
         </form>
@@ -531,4 +570,4 @@ const AddTransaction = ({ isOpen: externalIsOpen, onOpenChange }: AddTransaction
   );
 };
 
-export default AddTransaction;
+export default EditTransaction;
