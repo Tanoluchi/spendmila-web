@@ -20,20 +20,16 @@ class FinancialGoalBase(SQLModel):
     goal_type: FinancialGoalType = Field(default=FinancialGoalType.SAVINGS)
     description: Optional[str] = Field(default=None, max_length=255)
     icon: Optional[str] = Field(default=None, max_length=255)  # Icon for the goal
-    color: Optional[str] = Field(default=None, max_length=50)  # Color code for the goal
 
 
 class FinancialGoalRead(FinancialGoalBase):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     id: uuid.UUID
     user_id: uuid.UUID
-    currency_id: uuid.UUID
-    currency: Optional[dict] = None
 
 
 class FinancialGoalCreate(FinancialGoalBase):
     model_config = ConfigDict(arbitrary_types_allowed=True)
-    currency_id: uuid.UUID
 
 
 class FinancialGoalUpdate(SQLModel):
@@ -46,14 +42,11 @@ class FinancialGoalUpdate(SQLModel):
     goal_type: Optional[FinancialGoalType] = None
     description: Optional[str] = None
     icon: Optional[str] = None
-    color: Optional[str] = None
-    currency_id: Optional[uuid.UUID] = None
 
 
 class FinancialGoalPublic(FinancialGoalBase):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     id: uuid.UUID
-    currency: Optional[dict] = None
 
 
 class FinancialGoalsPublic(SQLModel):
@@ -65,7 +58,6 @@ class FinancialGoalsPublic(SQLModel):
 class FinancialGoalReadWithDetails(FinancialGoalRead):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     user: Optional[Dict[str, Any]] = None
-    currency: Optional[Dict[str, Any]] = None
     progress_percentage: Optional[float] = None
     savings: List[dict] = []
 
@@ -109,10 +101,9 @@ def format_financial_goal_for_response(goal) -> Dict[str, Any]:
         "status": goal.status,
         "goal_type": goal.goal_type,
         "icon": goal.icon,
-        "color": goal.color,
+        # color field has been removed from the model
         "is_active": getattr(goal, "is_active", True),
         "user_id": goal.user_id,
-        "currency_id": goal.currency_id,
         "account_id": getattr(goal, "account_id", None),
         "created_at": getattr(goal, "created_at", None),
         "updated_at": getattr(goal, "updated_at", None),
@@ -125,11 +116,6 @@ def format_financial_goal_for_response(goal) -> Dict[str, Any]:
         goal_dict["user"] = goal.user.model_dump()
     else:
         goal_dict["user"] = None
-        
-    if hasattr(goal, "currency") and goal.currency:
-        goal_dict["currency"] = goal.currency.model_dump()
-    else:
-        goal_dict["currency"] = None
     
     return goal_dict
 
