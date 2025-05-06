@@ -1,5 +1,6 @@
 import uuid
-from typing import TYPE_CHECKING, Optional, List, ForwardRef, Dict, Any
+import datetime
+from typing import TYPE_CHECKING, List, ForwardRef
 
 from pydantic import ConfigDict
 from sqlmodel import Field, Relationship, SQLModel
@@ -29,6 +30,8 @@ class CurrencyBase(SQLModel):
     code: CurrencyCode = Field(index=True, unique=True)
     symbol: str = Field(max_length=5)
     name: str = Field(index=True, max_length=50)
+    created_at: datetime.datetime = Field(default_factory=datetime.datetime.now)
+    updated_at: datetime.datetime = Field(default_factory=datetime.datetime.now)
 
 
 class Currency(CurrencyBase, table=True):

@@ -1,5 +1,5 @@
 import React from "react"
-import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query"
+import { useQueryClient, useQuery } from "@tanstack/react-query"
 import { type SubmitHandler, useForm, Controller } from "react-hook-form"
 import { useState } from "react"
 import { Plus } from "lucide-react"
@@ -8,11 +8,14 @@ import { Button } from "../ui/button-tailwind"
 import { Input, Select } from "../ui/input-tailwind"
 import { NumberInput } from "../ui/number-input-tailwind"
 import { Text } from "../ui/text-tailwind"
-import { format, addMonths, endOfMonth } from "date-fns"
+import { format, endOfMonth } from "date-fns"
 
 import type { ApiError } from "@/client/core/ApiError"
 import useCustomToast from "@/hooks/useCustomToast"
 import { handleError } from "@/utils"
+import { BudgetService, type CreateBudgetRequest } from "@/client/services/BudgetService"
+import { useBudgets } from "@/hooks/useBudgets"
+import { useUserData } from "@/hooks/useUserData"
 import {
   DialogBody,
   DialogCloseTrigger,
@@ -26,34 +29,11 @@ import {
 } from "../ui/dialog-tailwind"
 import { Field } from "../ui/field-tailwind"
 
-// This would be defined in your client/types.gen.ts
-interface BudgetCreate {
-  name: string;
+// Form interface that includes all fields needed for budget creation
+interface BudgetFormData extends CreateBudgetRequest {
   description?: string;
-  amount: number;
-  start_date: string;
-  end_date: string;
-  category_id?: string;
-  currency_id: string;
+  timeframe: string;
 }
-
-// Mock service for now - would be replaced with actual service from SDK
-const BudgetService = {
-  createBudget: async (data: { requestBody: BudgetCreate }) => {
-    // This would call the actual API endpoint
-    return fetch('/api/v1/budgets/', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('access_token')}`
-      },
-      body: JSON.stringify(data.requestBody)
-    }).then(res => {
-      if (!res.ok) throw new Error('Failed to create budget');
-      return res.json();
-    });
-  }
-};
 
 interface CreateBudgetProps {
   isOpen?: boolean;
@@ -73,16 +53,16 @@ const CreateBudget = ({ isOpen: externalIsOpen, onOpenChange }: CreateBudgetProp
   const queryClient = useQueryClient();
   const { showSuccessToast, showErrorToast } = useCustomToast();
   
-  // Fetch currencies and categories
-  const { data: currencies } = useQuery({
-    queryKey: ["currencies"],
-    queryFn: () => fetch('/api/v1/currencies').then(res => res.json()),
-    enabled: isOpen
-  });
-
-  const { data: categories } = useQuery({
-    queryKey: ["categories"],
-    queryFn: () => fetch('/api/v1/categories').then(res => res.json()),
+  // Get user data for currency info
+  const { userData, isLoading: isLoadingUser } = useUserData();
+  
+  // Use the budget hook for mutations
+  const { createBudget, isLoading: isLoadingBudgets } = useBudgets();
+  
+  // Fetch budget categories
+  const { data: categories, isLoading: isLoadingCategories } = useQuery({
+    queryKey: ["budget-categories"],
+    queryFn: () => BudgetService.getBudgetCategories(),
     enabled: isOpen
   });
 
@@ -97,37 +77,39 @@ const CreateBudget = ({ isOpen: externalIsOpen, onOpenChange }: CreateBudgetProp
     control,
     reset,
     formState: { errors, isValid, isSubmitting },
-  } = useForm<BudgetCreate>({
+  } = useForm<BudgetFormData>({
     mode: "onBlur",
     criteriaMode: "all",
     defaultValues: {
       name: "",
       description: "",
       amount: 0,
-      start_date: startDate,
-      end_date: endDate,
-      currency_id: "",
+      category: "",
+      color: "#6366F1", // Default indigo color
+      timeframe: "monthly",
+      currency_id: userData?.default_currency_id || "",
     },
   });
 
-  const mutation = useMutation({
-    mutationFn: (data: BudgetCreate) =>
-      BudgetService.createBudget({ requestBody: data }),
-    onSuccess: () => {
+  const onSubmit: SubmitHandler<BudgetFormData> = (data) => {
+    // Transform the form data to match the API's expected format
+    const budgetData: CreateBudgetRequest = {
+      name: data.name,
+      amount: data.amount,
+      category: data.category,
+      color: data.color,
+      timeframe: data.timeframe,
+      currency_id: data.currency_id || userData?.default_currency_id || "",
+    };
+    
+    try {
+      createBudget(budgetData);
       showSuccessToast("Budget created successfully.");
       reset();
       handleOpenChange(false);
-    },
-    onError: (err: ApiError) => {
+    } catch (err: any) {
       handleError(err, showErrorToast);
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["budgets"] });
-    },
-  });
-
-  const onSubmit: SubmitHandler<BudgetCreate> = (data) => {
-    mutation.mutate(data);
+    }
   };
 
   return (
@@ -202,54 +184,51 @@ const CreateBudget = ({ isOpen: externalIsOpen, onOpenChange }: CreateBudgetProp
 
               <Field
                 required
-                invalid={!!errors.start_date}
-                errorText={errors.start_date?.message}
-                label="Start Date"
+                invalid={!!errors.timeframe}
+                errorText={errors.timeframe?.message}
+                label="Time Period"
               >
-                <Input
-                  id="start_date"
-                  {...register("start_date", {
-                    required: "Start date is required.",
+                <Select
+                  id="timeframe"
+                  {...register("timeframe", {
+                    required: "Time period is required.",
                   })}
-                  type="date"
-                />
+                >
+                  <option value="monthly">Monthly</option>
+                  <option value="quarterly">Quarterly</option>
+                  <option value="annual">Annual</option>
+                </Select>
               </Field>
 
               <Field
-                required
-                invalid={!!errors.end_date}
-                errorText={errors.end_date?.message}
-                label="End Date"
-              >
-                <Input
-                  id="end_date"
-                  {...register("end_date", {
-                    required: "End date is required.",
-                    validate: (value, formValues) => {
-                      return new Date(value) >= new Date(formValues.start_date) || 
-                        "End date must be after start date";
-                    }
-                  })}
-                  type="date"
-                />
-              </Field>
-
-              <Field
-                invalid={!!errors.category_id}
-                errorText={errors.category_id?.message}
+                invalid={!!errors.category}
+                errorText={errors.category?.message}
                 label="Category"
               >
                 <Select
-                  id="category_id"
-                  {...register("category_id")}
+                  id="category"
+                  {...register("category")}
                   placeholder="Select category (optional)"
                 >
-                  {categories?.data?.filter((cat: any) => cat.type === "expense")?.map((category: any) => (
-                    <option key={category.id} value={category.id}>
+                  {!isLoadingCategories && categories?.map((category: { name: string; value: string }) => (
+                    <option key={category.value} value={category.value}>
                       {category.name}
                     </option>
                   ))}
                 </Select>
+              </Field>
+              
+              <Field
+                invalid={!!errors.color}
+                errorText={errors.color?.message}
+                label="Color"
+              >
+                <Input
+                  id="color"
+                  {...register("color")}
+                  type="color"
+                  defaultValue="#6366F1"
+                />
               </Field>
 
               <Field
@@ -258,19 +237,19 @@ const CreateBudget = ({ isOpen: externalIsOpen, onOpenChange }: CreateBudgetProp
                 errorText={errors.currency_id?.message}
                 label="Currency"
               >
-                <Select
+                <Input
                   id="currency_id"
                   {...register("currency_id", {
                     required: "Currency is required.",
                   })}
-                  placeholder="Select currency"
-                >
-                  {currencies?.data?.map((currency: any) => (
-                    <option key={currency.id} value={currency.id}>
-                      {currency.code} - {currency.name}
-                    </option>
-                  ))}
-                </Select>
+                  type="hidden"
+                  value={userData?.default_currency_id || ""}
+                />
+                <Input
+                  type="text"
+                  value={userData?.default_currency?.code || "USD"}
+                  disabled
+                />
               </Field>
             </div>
           </DialogBody>
@@ -289,8 +268,8 @@ const CreateBudget = ({ isOpen: externalIsOpen, onOpenChange }: CreateBudgetProp
               variant="solid"
               colorPalette="teal"
               type="submit"
-              disabled={!isValid}
-              loading={isSubmitting}
+              disabled={!isValid || isSubmitting || isLoadingBudgets}
+              loading={isSubmitting || isLoadingBudgets}
             >
               Save
             </Button>

@@ -5,40 +5,65 @@ import { request as __request } from "../core/request";
 // Define budget types
 export interface Budget {
   id: string;
-  category: string;
+  name: string;
   amount: number;
-  period: string;
-  start_date: string;
-  end_date?: string;
+  spent_amount: number;
+  remaining_amount: number;
+  progress_percentage: number;
+  color: string;
   user_id: string;
-  currency_id: string;
-  color?: string;
-  icon?: string;
-  spent?: number;
-  remaining?: number;
+  created_at?: string;
+  updated_at?: string;
+  currency_symbol: string;
+  currency_code: string;
+  category_id?: string;
+  category_name?: string;
 }
 
 export interface CreateBudgetRequest {
-  category: string;
+  name: string;
   amount: number;
-  period: string;
-  start_date: string;
-  end_date?: string;
-  currency_id: string;
   color?: string;
-  icon?: string;
+}
+
+export interface BudgetSummary {
+  total_budgeted: number;
+  total_spent: number;
+  remaining: number;
+  percentage: number;
+  status: string; // on-track, warning, over-budget
+  currency_symbol: string;
+  currency_code: string;
+}
+
+export interface PaginatedBudgetResponse {
+  items: Budget[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+  summary: BudgetSummary;
 }
 
 export class BudgetService {
   /**
    * Get all budgets for the current user
-   * @returns Budget[] Successful Response
+   * @param year Optional year filter
+   * @param month Optional month filter
+   * @returns PaginatedBudgetResponse Successful Response
    * @throws ApiError
    */
-  public static getBudgets(): CancelablePromise<Budget[]> {
+  public static getBudgets(
+    year?: number,
+    month?: number
+  ): CancelablePromise<PaginatedBudgetResponse> {
     return __request(OpenAPI, {
       method: "GET",
       url: "/api/v1/budgets/",
+      query: {
+        year,
+        month,
+      },
       errors: {
         422: "Validation Error",
       },
@@ -116,6 +141,44 @@ export class BudgetService {
     return __request(OpenAPI, {
       method: "DELETE",
       url: `/api/v1/budgets/${id}`,
+      errors: {
+        422: "Validation Error",
+      },
+    });
+  }
+
+  /**
+   * Get budget progress and summary for the current user
+   * @param timeframe Optional timeframe filter (monthly, quarterly, annual)
+   * @returns Budget progress data with summary
+   * @throws ApiError
+   */
+  public static getBudgetProgress(
+    year?: number,
+    month?: number
+  ): CancelablePromise<{ budgets: any[], summary: BudgetSummary }> {
+    return __request(OpenAPI, {
+      method: "GET",
+      url: "/api/v1/budgets/progress",
+      query: {
+        year,
+        month,
+      },
+      errors: {
+        422: "Validation Error",
+      },
+    });
+  }
+
+  /**
+   * Get available budget categories
+   * @returns Array of category options with name and value
+   * @throws ApiError
+   */
+  public static getBudgetCategories(): CancelablePromise<Array<{ name: string; value: string }>> {
+    return __request(OpenAPI, {
+      method: "GET",
+      url: `/api/v1/budgets/categories`,
       errors: {
         422: "Validation Error",
       },

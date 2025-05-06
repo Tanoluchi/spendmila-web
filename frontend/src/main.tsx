@@ -15,9 +15,7 @@ import "./styles"
 import { ApiError, OpenAPI } from "./client"
 import { ThemeProvider } from "next-themes"
 
-// Configurar la API base
-const apiUrl = import.meta.env.VITE_API_URL || '/api';
-OpenAPI.BASE = apiUrl;
+OpenAPI.BASE = import.meta.env.VITE_API_URL
 OpenAPI.TOKEN = async () => {
   return localStorage.getItem("access_token") || ""
 }

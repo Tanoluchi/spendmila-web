@@ -25,13 +25,23 @@ export const useTransactions = (
     queryKey: ["transactions", categoryFilter, accountFilter, page, pageSize],
     queryFn: async () => {
       try {
-        // Add accountFilter to the API call
-        return await TransactionService.getTransactions(
-          page, 
-          pageSize, 
-          categoryFilter === 'ALL' ? undefined : categoryFilter,
-          accountFilter === 'ALL' ? undefined : accountFilter
-        );
+        // Use the TransactionFilter type to properly format our request
+        const filter: Record<string, any> = {
+          page,
+          page_size: pageSize
+        };
+        
+        // Only add filters if they aren't set to 'ALL'
+        if (categoryFilter && categoryFilter !== 'ALL') {
+          filter.category_name = categoryFilter;
+        }
+        
+        if (accountFilter && accountFilter !== 'ALL') {
+          filter.account_id = accountFilter;
+        }
+
+        console.log('Sending transaction filters:', filter);
+        return await TransactionService.getTransactions(filter);
       } catch (error) {
         console.error("Error fetching transactions:", error);
         throw error;

@@ -1,4 +1,5 @@
 import uuid
+import datetime
 from datetime import date
 from typing import TYPE_CHECKING, Optional, ForwardRef, List
 
@@ -33,6 +34,8 @@ class DebtBase(SQLModel):
     minimum_payment: Optional[float] = Field(default=None, ge=0)
     icon: Optional[str] = Field(default=None, max_length=255)  # Icon for the debt
     color: Optional[str] = Field(default=None, max_length=50)  # Color code for the debt
+    created_at: datetime.datetime = Field(default_factory=datetime.datetime.now)
+    updated_at: datetime.datetime = Field(default_factory=datetime.datetime.now)
     
     # Payment tracking
     paid_amount: float = Field(default=0)  # Amount that has been paid off so far

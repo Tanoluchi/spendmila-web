@@ -34,6 +34,8 @@ class TransactionBase(SQLModel):
     amount: float = Field(gt=0)  # Ensure amount is positive
     description: Optional[str] = Field(default=None, max_length=255)
     is_active: bool = Field(default=True)
+    created_at: datetime.datetime = Field(default_factory=datetime.datetime.now)
+    updated_at: datetime.datetime = Field(default_factory=datetime.datetime.now)
 
     # Foreign Keys
     user_id: uuid.UUID = Field(foreign_key="user.id", index=True)

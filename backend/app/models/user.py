@@ -22,6 +22,7 @@ FinancialGoal = ForwardRef("FinancialGoal")
 Subscription = ForwardRef("Subscription")
 Debt = ForwardRef("Debt")
 Account = ForwardRef("Account")
+Budget = ForwardRef("Budget")
 
 # Base model with shared properties
 class UserBase(SQLModel):
@@ -51,6 +52,7 @@ class User(UserBase, table=True):
     subscriptions: List[Subscription] = Relationship(back_populates="user")
     debts: List[Debt] = Relationship(back_populates="user")
     accounts: List[Account] = Relationship(back_populates="user")
+    budgets: List[Budget] = Relationship(back_populates="user")
     # Eliminada la relación con payment_methods ya que ahora son entidades globales
 
 # Update forward references at the end of the file

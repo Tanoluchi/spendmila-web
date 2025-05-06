@@ -32,6 +32,7 @@ class AccountBase(SQLModel):
     icon: Optional[str] = Field(default=None, max_length=255)  # Icon for the account
     is_default: bool = Field(default=False)  # Whether this is the default account
     created_at: datetime.datetime = Field(default_factory=datetime.datetime.now)
+    updated_at: datetime.datetime = Field(default_factory=datetime.datetime.now)
 
     # Foreign Keys
     user_id: uuid.UUID = Field(foreign_key="user.id", index=True)

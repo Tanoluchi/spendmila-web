@@ -1,11 +1,10 @@
 import uuid
-from typing import Any, Sequence, List, Optional
+from typing import Any, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query
 
 from app.crud import transaction as crud_transaction # Alias to avoid name clash
 from app.api.deps import SessionDep, CurrentUser
-from app.models.transaction import Transaction
 from app.schemas.transaction import (
     TransactionCreate,
     TransactionRead,
@@ -53,7 +52,16 @@ def read_transactions(
     Supports pagination and filtering by transaction type, category name, and account ID.
     """
     # Get total count for pagination
-    account_uuid = uuid.UUID(account_id) if account_id else None
+    # Safely convert account_id to UUID if provided
+    account_uuid = None
+    if account_id:
+        try:
+            account_uuid = uuid.UUID(account_id)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid account_id format")
+    
+    # Log the received filters for debugging
+    print(f"Filtering transactions with: type={transaction_type}, category={category_name}, account={account_uuid}")
     
     total_count = crud_transaction.get_transaction_count(
         session=session, 
@@ -81,9 +89,34 @@ def read_transactions(
         limit=page_size
     )
     
+    # Process transactions to handle nested objects with explicit relationship handling
+    processed_transactions = []
+    for transaction in transactions:
+        # Create a dictionary representation of the transaction
+        tx_dict = {}
+        
+        # Add all direct attributes of the transaction
+        for key, value in transaction.__dict__.items():
+            if not key.startswith('_'):
+                tx_dict[key] = value
+        
+        # Process other relationships similarly
+        for rel in ['category', 'account', 'currency', 'payment_method', 'subscription', 'financial_goal', 'debt']:
+            rel_obj = getattr(transaction, rel, None)
+            if rel_obj:
+                # Convert relationship object to dictionary
+                rel_dict = {}
+                for rel_key, rel_value in rel_obj.__dict__.items():
+                    if not rel_key.startswith('_'):
+                        rel_dict[rel_key] = rel_value
+                # Replace relationship object with dictionary
+                tx_dict[rel] = rel_dict
+        
+        processed_transactions.append(tx_dict)
+    
     # Return paginated response
     return {
-        "items": transactions,
+        "items": processed_transactions,
         "total": total_count,
         "page": page,
         "page_size": page_size,

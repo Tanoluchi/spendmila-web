@@ -1,4 +1,5 @@
 import uuid
+import datetime
 from typing import TYPE_CHECKING, Optional, List, Dict, Any, ForwardRef
 
 from pydantic import ConfigDict
@@ -20,6 +21,8 @@ class PaymentMethodBase(SQLModel):
     description: Optional[str] = Field(default=None, max_length=255)
     payment_method_type: PaymentMethodType = Field(default=PaymentMethodType.CASH)
     is_active: bool = Field(default=True)
+    created_at: datetime.datetime = Field(default_factory=datetime.datetime.now)
+    updated_at: datetime.datetime = Field(default_factory=datetime.datetime.now)
     # Removed user_id as payment methods are now global
 
 class PaymentMethod(PaymentMethodBase, table=True):

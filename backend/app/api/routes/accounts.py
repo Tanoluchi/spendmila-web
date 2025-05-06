@@ -4,22 +4,30 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session
 
 from app.api import deps
-from app.crud import account as account_crud
-from app.models.account import Account
 from app.models.user import User
-from app.models.enums import AccountType
 from app.schemas.account import (
     AccountCreate,
     AccountRead,
     AccountUpdate,
     AccountReadWithDetails,
+    AccountTypeResponse
 )
+from app.schemas.user import Message
+from app.services.account_service import AccountService
 
 router = APIRouter(
     prefix="/accounts",
     tags=["accounts"],
     responses={404: {"description": "Not found"}},
 )
+
+# IMPORTANTE: Definir las rutas específicas ANTES de las rutas con parámetros dinámicos
+@router.get("/types", response_model=List[AccountTypeResponse])
+def get_account_types() -> List[AccountTypeResponse]:
+    """
+    Get all available account types from the AccountType enum.
+    """
+    return AccountService.get_account_types()
 
 
 @router.get("/", response_model=Sequence[AccountRead])
@@ -29,12 +37,8 @@ def get_accounts(
 ) -> Any:
     """
     Retrieve accounts for the current user.
-    Optionally filter by account type.
     """
-    accounts = account_crud.get_accounts(
-        db=db, user_id=current_user.id
-    )
-    return accounts
+    return AccountService.get_accounts(db=db, user_id=current_user.id)
 
 
 @router.post("/", response_model=AccountRead, status_code=status.HTTP_201_CREATED)
@@ -47,24 +51,15 @@ def create_account(
     """
     Create new account for the current user.
     """
-    # Check if account with same name already exists for this user
-    existing_account = account_crud.get_account_by_name(
-        db=db, user_id=current_user.id, name=account_in.name
-    )
-    if existing_account:
+    try:
+        return AccountService.create_account(
+            db=db, account_in=account_in, user_id=current_user.id
+        )
+    except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Account with this name already exists.",
+            detail=str(e),
         )
-    
-    # If this is set as default account, unset any existing default accounts
-    if account_in.is_default:
-        account_crud.unset_default_accounts(db=db, user_id=current_user.id)
-    
-    account = account_crud.create_account(
-        db=db, account=account_in, user_id=current_user.id
-    )
-    return account
 
 
 @router.get("/{account_id}", response_model=AccountReadWithDetails)
@@ -77,22 +72,14 @@ def get_account(
     """
     Get account by ID with details including transaction count and last transaction date.
     """
-    account = account_crud.get_account(db=db, account_id=account_id)
-    if not account:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Account not found"
-        )
-    if account.user_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Not enough permissions"
-        )
+    account_with_details = AccountService.get_account(
+        db=db, account_id=account_id, user_id=current_user.id
+    )
     
-    # Actualizar el balance automáticamente basado en transacciones
-    account_crud.update_account_balance(db=db, account_id=account_id)
-    
-    # Obtener detalles completos de la cuenta, incluyendo conteo de transacciones
-    # y fecha de última transacción
-    account_with_details = account_crud.get_account_with_details(db=db, account_id=account_id)
+    if not account_with_details:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Account not found or permission denied"
+        )
     
     return account_with_details
 
@@ -108,74 +95,44 @@ def update_account(
     """
     Update an account.
     """
-    account = account_crud.get_account(db=db, account_id=account_id)
-    if not account:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Account not found"
+    try:
+        updated_account = AccountService.update_account(
+            db=db, account_id=account_id, account_update=account_in, user_id=current_user.id
         )
-    if account.user_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Not enough permissions"
-        )
-    
-    # If name is being updated, check it doesn't conflict with existing accounts
-    if account_in.name and account_in.name != account.name:
-        existing_account = account_crud.get_account_by_name(
-            db=db, user_id=current_user.id, name=account_in.name
-        )
-        if existing_account and existing_account.id != account_id:
+        
+        if not updated_account:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Account with this name already exists.",
+                status_code=status.HTTP_404_NOT_FOUND, 
+                detail="Account not found or permission denied"
             )
-    
-    # If this is set as default account, unset any existing default accounts
-    if account_in.is_default is True:
-        account_crud.unset_default_accounts(db=db, user_id=current_user.id)
-    
-    account = account_crud.update_account(
-        db=db, account_id=account_id, account_update=account_in
-    )
-    return account
+            
+        return updated_account
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
 
 
-@router.delete("/{account_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{account_id}", response_model=Message)
 def delete_account(
     *,
     db: Session = Depends(deps.get_db),
     current_user: User = Depends(deps.get_current_user),
     account_id: uuid.UUID,
-) -> None:
+) -> Message:
     """
     Delete an account.
     """
-    account = account_crud.get_account(db=db, account_id=account_id)
-    if not account:
+    success = AccountService.delete_account(
+        db=db, account_id=account_id, user_id=current_user.id
+    )
+    
+    if not success:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Account not found"
-        )
-    if account.user_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Not enough permissions"
+            status_code=status.HTTP_404_NOT_FOUND, 
+            detail="Account not found or permission denied"
         )
     
-    # La cuenta y todas sus entidades asociadas (transacciones, deudas, suscripciones)
-    # serán eliminadas automáticamente en cascada
-    
-    account_crud.delete_account(db=db, account_id=account_id)
+    return Message(message="Account successfully deleted")
 
-    return {"detail": "Account successfully deleted"}
-
-
-@router.get("/types", response_model=List[Dict[str, str]])
-def get_account_types() -> Any:
-    """
-    Get all available account types from the AccountType enum.
-    """
-    # Convertir el enum a una lista de diccionarios con name y value
-    account_types = [
-        {"name": account_type.name, "value": account_type.value}
-        for account_type in AccountType
-    ]
-    
-    return account_types

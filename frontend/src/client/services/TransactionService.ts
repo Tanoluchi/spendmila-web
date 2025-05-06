@@ -1,6 +1,7 @@
 import type { CancelablePromise } from "../core/CancelablePromise";
 import { OpenAPI } from "../core/OpenAPI";
 import { request as __request } from "../core/request";
+import { TransactionFilter } from "@/types/transaction";
 
 // Define category type
 export interface Category {
@@ -72,32 +73,35 @@ export interface PaginatedTransactionsResponse {
 export class TransactionService {
   /**
    * Get all transactions for the current user with pagination
-   * @param page Page number (1-indexed)
-   * @param pageSize Number of items per page
-   * @param categoryName Optional category name filter
-   * @param accountId Optional account ID filter
+   * @param filter Optional filter parameters
    * @returns PaginatedTransactionsResponse Successful Response
    * @throws ApiError
    */
   public static getTransactions(
-    page: number = 1, 
-    pageSize: number = 10,
-    categoryName?: string,
-    accountId?: string
+    filter?: TransactionFilter | number
   ): CancelablePromise<PaginatedTransactionsResponse> {
     // Build query parameters
-    const params: Record<string, any> = {
-      page,
-      page_size: pageSize
-    };
-
-    // Add optional filters if provided
-    if (categoryName) {
-      params.category_name = categoryName;
-    }
-
-    if (accountId) {
-      params.account_id = accountId;
+    const params: Record<string, any> = {};
+    
+    // Handle backward compatibility - if filter is a number, treat it as page
+    if (typeof filter === 'number') {
+      params.page = filter;
+      params.page_size = 10; // Default page size
+    } else if (filter) {
+      // It's a filter object, map all properties
+      Object.entries(filter).forEach(([key, value]) => {
+        if (value !== undefined) {
+          params[key] = value;
+        }
+      });
+      
+      // Ensure defaults if not provided
+      if (!params.page) params.page = 1;
+      if (!params.page_size && !params.limit) params.page_size = 10;
+    } else {
+      // No filter provided, use defaults
+      params.page = 1;
+      params.page_size = 10;
     }
 
     return __request(OpenAPI, {

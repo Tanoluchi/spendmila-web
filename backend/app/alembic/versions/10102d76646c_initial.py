@@ -1,8 +1,8 @@
 """Initial
 
-Revision ID: 3b4748568203
+Revision ID: 10102d76646c
 Revises: 
-Create Date: 2025-05-04 16:19:37.552804
+Create Date: 2025-05-06 10:07:43.765174
 
 """
 from alembic import op
@@ -11,7 +11,7 @@ import sqlmodel.sql.sqltypes
 
 
 # revision identifiers, used by Alembic.
-revision = '3b4748568203'
+revision = '10102d76646c'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -23,7 +23,9 @@ def upgrade():
     sa.Column('name', sqlmodel.sql.sqltypes.AutoString(length=100), nullable=False),
     sa.Column('category_type', sa.Enum('INCOME', 'EXPENSE', name='categorytype'), nullable=False),
     sa.Column('icon', sqlmodel.sql.sqltypes.AutoString(length=255), nullable=True),
-    sa.Column('color', sqlmodel.sql.sqltypes.AutoString(length=50), nullable=True),
+    sa.Column('color', sqlmodel.sql.sqltypes.AutoString(length=50), nullable=False),
+    sa.Column('created_at', sa.DateTime(), nullable=False),
+    sa.Column('updated_at', sa.DateTime(), nullable=False),
     sa.Column('id', sa.Uuid(), nullable=False),
     sa.PrimaryKeyConstraint('id')
     )
@@ -34,6 +36,8 @@ def upgrade():
     sa.Column('code', sa.Enum('USD', 'EUR', 'ARS', name='currencycode'), nullable=False),
     sa.Column('symbol', sqlmodel.sql.sqltypes.AutoString(length=5), nullable=False),
     sa.Column('name', sqlmodel.sql.sqltypes.AutoString(length=50), nullable=False),
+    sa.Column('created_at', sa.DateTime(), nullable=False),
+    sa.Column('updated_at', sa.DateTime(), nullable=False),
     sa.Column('id', sa.Uuid(), nullable=False),
     sa.PrimaryKeyConstraint('id')
     )
@@ -45,6 +49,8 @@ def upgrade():
     sa.Column('description', sqlmodel.sql.sqltypes.AutoString(length=255), nullable=True),
     sa.Column('payment_method_type', sa.Enum('CASH', 'TRANSFER', 'CARD', 'OTHER', name='paymentmethodtype'), nullable=False),
     sa.Column('is_active', sa.Boolean(), nullable=False),
+    sa.Column('created_at', sa.DateTime(), nullable=False),
+    sa.Column('updated_at', sa.DateTime(), nullable=False),
     sa.Column('id', sa.Uuid(), nullable=False),
     sa.PrimaryKeyConstraint('id')
     )
@@ -71,6 +77,8 @@ def upgrade():
     sa.Column('institution', sqlmodel.sql.sqltypes.AutoString(length=150), nullable=True),
     sa.Column('icon', sqlmodel.sql.sqltypes.AutoString(length=255), nullable=True),
     sa.Column('is_default', sa.Boolean(), nullable=False),
+    sa.Column('created_at', sa.DateTime(), nullable=False),
+    sa.Column('updated_at', sa.DateTime(), nullable=False),
     sa.Column('user_id', sa.Uuid(), nullable=False),
     sa.Column('currency_id', sa.Uuid(), nullable=False),
     sa.Column('id', sa.Uuid(), nullable=False),
@@ -83,6 +91,23 @@ def upgrade():
     op.create_index(op.f('ix_account_id'), 'account', ['id'], unique=False)
     op.create_index(op.f('ix_account_name'), 'account', ['name'], unique=False)
     op.create_index(op.f('ix_account_user_id'), 'account', ['user_id'], unique=False)
+    op.create_table('budget',
+    sa.Column('name', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+    sa.Column('amount', sa.Numeric(), nullable=False),
+    sa.Column('color', sqlmodel.sql.sqltypes.AutoString(length=50), nullable=False),
+    sa.Column('created_at', sa.DateTime(), nullable=False),
+    sa.Column('updated_at', sa.DateTime(), nullable=False),
+    sa.Column('user_id', sa.Uuid(), nullable=False),
+    sa.Column('category_id', sa.Uuid(), nullable=False),
+    sa.Column('id', sa.Uuid(), nullable=False),
+    sa.ForeignKeyConstraint(['category_id'], ['category.id'], ),
+    sa.ForeignKeyConstraint(['user_id'], ['user.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_budget_category_id'), 'budget', ['category_id'], unique=False)
+    op.create_index(op.f('ix_budget_id'), 'budget', ['id'], unique=False)
+    op.create_index(op.f('ix_budget_name'), 'budget', ['name'], unique=False)
+    op.create_index(op.f('ix_budget_user_id'), 'budget', ['user_id'], unique=False)
     op.create_table('financial_goal',
     sa.Column('name', sqlmodel.sql.sqltypes.AutoString(length=150), nullable=False),
     sa.Column('target_amount', sa.Float(), nullable=False),
@@ -93,6 +118,8 @@ def upgrade():
     sa.Column('description', sqlmodel.sql.sqltypes.AutoString(length=255), nullable=True),
     sa.Column('icon', sqlmodel.sql.sqltypes.AutoString(length=255), nullable=True),
     sa.Column('color', sqlmodel.sql.sqltypes.AutoString(length=50), nullable=True),
+    sa.Column('created_at', sa.DateTime(), nullable=False),
+    sa.Column('updated_at', sa.DateTime(), nullable=False),
     sa.Column('user_id', sa.Uuid(), nullable=False),
     sa.Column('currency_id', sa.Uuid(), nullable=False),
     sa.Column('id', sa.Uuid(), nullable=False),
@@ -118,6 +145,8 @@ def upgrade():
     sa.Column('minimum_payment', sa.Float(), nullable=True),
     sa.Column('icon', sqlmodel.sql.sqltypes.AutoString(length=255), nullable=True),
     sa.Column('color', sqlmodel.sql.sqltypes.AutoString(length=50), nullable=True),
+    sa.Column('created_at', sa.DateTime(), nullable=False),
+    sa.Column('updated_at', sa.DateTime(), nullable=False),
     sa.Column('paid_amount', sa.Float(), nullable=False),
     sa.Column('remaining_amount', sa.Float(), nullable=False),
     sa.Column('payment_progress', sa.Float(), nullable=False),
@@ -154,6 +183,8 @@ def upgrade():
     sa.Column('color', sqlmodel.sql.sqltypes.AutoString(length=50), nullable=True),
     sa.Column('description', sqlmodel.sql.sqltypes.AutoString(length=255), nullable=True),
     sa.Column('reminder_days', sa.Integer(), nullable=True),
+    sa.Column('created_at', sa.DateTime(), nullable=False),
+    sa.Column('updated_at', sa.DateTime(), nullable=False),
     sa.Column('user_id', sa.Uuid(), nullable=False),
     sa.Column('currency_id', sa.Uuid(), nullable=False),
     sa.Column('account_id', sa.Uuid(), nullable=True),
@@ -176,6 +207,8 @@ def upgrade():
     sa.Column('amount', sa.Float(), nullable=False),
     sa.Column('description', sqlmodel.sql.sqltypes.AutoString(length=255), nullable=True),
     sa.Column('is_active', sa.Boolean(), nullable=False),
+    sa.Column('created_at', sa.DateTime(), nullable=False),
+    sa.Column('updated_at', sa.DateTime(), nullable=False),
     sa.Column('user_id', sa.Uuid(), nullable=False),
     sa.Column('category_id', sa.Uuid(), nullable=False),
     sa.Column('payment_method_id', sa.Uuid(), nullable=False),
@@ -251,6 +284,11 @@ def downgrade():
     op.drop_index(op.f('ix_financial_goal_deadline'), table_name='financial_goal')
     op.drop_index(op.f('ix_financial_goal_currency_id'), table_name='financial_goal')
     op.drop_table('financial_goal')
+    op.drop_index(op.f('ix_budget_user_id'), table_name='budget')
+    op.drop_index(op.f('ix_budget_name'), table_name='budget')
+    op.drop_index(op.f('ix_budget_id'), table_name='budget')
+    op.drop_index(op.f('ix_budget_category_id'), table_name='budget')
+    op.drop_table('budget')
     op.drop_index(op.f('ix_account_user_id'), table_name='account')
     op.drop_index(op.f('ix_account_name'), table_name='account')
     op.drop_index(op.f('ix_account_id'), table_name='account')

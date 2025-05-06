@@ -1,68 +1,108 @@
-import { Plus, Edit, Trash2, CreditCard, ArrowUpDown, AlertCircle, ExternalLink } from 'lucide-react';
+import React, { useState } from 'react';
+import { Plus } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from '@tanstack/react-router';
+
+// Componentes
 import AddAccount from '@/components/Modals/AddAccount';
-import useAccountsData from '@/hooks/useAccountsData';
-import { formatCurrency } from '@/utils/formatters';
 import AccountSummary from '@/components/Accounts/AccountSummary';
 import DeleteAccountDialog from '@/components/Accounts/DeleteAccountDialog';
+import AccountCard from '@/components/Accounts/AccountCard';
+
+// Hooks y Servicios
+import { useAccounts } from '@/hooks/useAccounts';
+import AccountService from '@/services/accountService';
+
+// Tipos
+import { Account, AccountTypeDisplayNames } from '@/types/account';
+
+/**
+ * Página principal de cuentas financieras
+ * 
+ * Responsabilidades:
+ * - Gestión de estado de UI (tabs, modales, etc.)
+ * - Orquestación de componentes
+ * - Delegación de lógica de negocio a servicios
+ */
 
 function Accounts() {
+  // Estado local para UI
+  const [activeTab, setActiveTab] = useState('all');
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedAccount, setSelectedAccount] = useState<string | null>(null);
+  
+  // Hooks para navegación y caché
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  
+  // Obtener datos de cuentas desde el hook base
   const { 
-    filteredAccounts, 
+    accounts, 
     isLoading, 
-    summary, 
-    activeTab, 
-    isModalOpen, 
-    deleteDialogOpen, 
-    selectedAccount,
-    accountTypes,
-    setIsModalOpen, 
-    setDeleteDialogOpen, 
-    handleTabChange, 
-    handleDeleteAccount, 
-    confirmDeleteAccount, 
-    handleEditAccount, 
-    handleViewTransactions, 
-    getLastUpdated, 
-    getTransactionCount 
-  } = useAccountsData();
+    deleteAccount
+  } = useAccounts();
+  
+  // Calcular estadísticas de resumen usando el servicio
+  const summary = AccountService.calculateAccountSummary(accounts);
 
-  // Helper function to get account icon based on type
-  const getAccountIcon = (type: string) => {
-    switch (type) {
-      case 'checking':
-        return <CreditCard className="text-blue-500" size={20} />;
-      case 'savings':
-        return <CreditCard className="text-green-500" size={20} />;
-      case 'credit':
-        return <CreditCard className="text-red-500" size={20} />;
-      case 'investment':
-        return <ArrowUpDown className="text-yellow-500" size={20} />;
-      default:
-        return <CreditCard className="text-gray-500" size={20} />;
-    }
+  // Filtrar cuentas según la pestaña activa
+  const filteredAccounts = accounts.filter((account: Account) => {
+    if (activeTab === 'all') return true;
+    return account.account_type === activeTab;
+  });
+
+  // Obtener tipos únicos de cuenta para las pestañas
+  const accountTypes = Array.from(new Set(
+    accounts
+      .map((account: Account) => account.account_type as string)
+      .filter(Boolean)
+  ));
+
+  // Funciones para gestión de eventos de UI
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
   };
 
-  // Check if account has active debts
-  const hasActiveDebt = (account: any) => {
-    // This would check if the account has any associated debts
-    // For demo purposes, we'll consider credit accounts or negative balances as having debt
-    return account.account_type === 'credit' || account.balance < 0;
+  const handleDeleteAccount = (id: string) => {
+    setSelectedAccount(id);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleEditAccount = (id: string) => {
+    setSelectedAccount(id);
+    setIsModalOpen(true);
+  };
+
+  const handleViewTransactions = (accountId: string) => {
+    navigate({ to: '/dashboard/transactions', search: { accountId } });
+  };
+
+  const confirmDeleteAccount = async () => {
+    if (selectedAccount) {
+      try {
+        await deleteAccount(selectedAccount);
+        // Invalidar la caché
+        queryClient.invalidateQueries({queryKey: ['account-details']});
+        setDeleteDialogOpen(false);
+        setSelectedAccount(null);
+      } catch (error) {
+        console.error("Error deleting account:", error);
+      }
+    }
   };
   
-  // Helper function to get display name for account type
-  const getAccountTypeDisplayName = (type: string) => {
-    switch (type) {
-      case 'checking':
-        return 'Checking';
-      case 'savings':
-        return 'Savings';
-      case 'credit':
-        return 'Credit Cards';
-      case 'investment':
-        return 'Investments';
-      default:
-        return type.charAt(0).toUpperCase() + type.slice(1);
-    }
+  // Funciones para obtener información de cuentas, delegadas al servicio
+  const getLastUpdated = (accountId: string) => {
+    return AccountService.getLastUpdated(accountId, accounts, queryClient);
+  };
+  
+  const getTransactionCount = (accountId: string) => {
+    return AccountService.getTransactionCount(
+      accountId, 
+      { limit: 20, showCountOverLimit: false },
+      queryClient
+    );
   };
   
   return (
@@ -84,13 +124,13 @@ function Accounts() {
           </button>
           
           {/* Dynamically generate account type filter buttons */}
-          {accountTypes.map(type => (
+          {accountTypes.map((type: string) => (
             <button
               key={type}
               className={`px-4 py-2 rounded-md ${activeTab === type ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-200' : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'}`}
               onClick={() => handleTabChange(type)}
             >
-              {getAccountTypeDisplayName(type)}
+              {AccountTypeDisplayNames[type.toLowerCase()] || type}
             </button>
           ))}
         </div>
@@ -103,6 +143,7 @@ function Accounts() {
         </button>
       </div>
       
+      {/* Modales */}
       <AddAccount isOpen={isModalOpen} onOpenChange={setIsModalOpen} accountId={selectedAccount} />
       <DeleteAccountDialog 
         isOpen={deleteDialogOpen} 
@@ -110,6 +151,7 @@ function Accounts() {
         onConfirm={confirmDeleteAccount}
       />
       
+      {/* Estados de carga y renderizado condicional */}
       {isLoading ? (
         <div className="flex justify-center py-8 dark:text-gray-200">
           <p>Loading accounts...</p>
@@ -151,71 +193,17 @@ function Accounts() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200 dark:bg-gray-900 dark:divide-gray-700 dark:text-gray-200">
-              {filteredAccounts.map((account) => (
-                <tr 
-                  key={account.id} 
-                  className="hover:bg-gray-50 dark:hover:bg-gray-800"
-                >
-                  <td 
-                    className="px-6 py-4 whitespace-nowrap cursor-pointer"
-                    onClick={() => handleViewTransactions(account.id)}
-                  >
-                    <div className="flex items-center">
-                      <div className="flex-shrink-0 h-10 w-10 flex items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800">
-                        {getAccountIcon(account.account_type)}
-                      </div>
-                      <div className="ml-4">
-                        <div className="text-sm font-medium">{account.name}</div>
-                        <div className="text-sm text-gray-500 dark:text-gray-400 capitalize">{account.account_type}</div>
-                      </div>
-                      {hasActiveDebt(account) && (
-                        <div className="ml-2">
-                          <AlertCircle className="text-amber-500" size={16} />
-                        </div>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm">{account.institution || 'N/A'}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right">
-                    <div className={`text-sm font-medium ${account.balance >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                      {formatCurrency(account.balance)}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-500 dark:text-gray-400">{getLastUpdated(account.id)}</div>
-                  </td>
-                  <td 
-                    className="px-6 py-4 whitespace-nowrap text-center cursor-pointer"
-                    onClick={() => handleViewTransactions(account.id)}
-                  >
-                    <div className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-                      {getTransactionCount(account.id)} transactions
-                      <ExternalLink size={12} className="ml-1" />
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleEditAccount(account.id);
-                      }}
-                      className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300 mr-4"
-                    >
-                      <Edit size={16} />
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteAccount(account.id);
-                      }}
-                      className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </td>
-                </tr>
+              {/* Renderizar cada cuenta como un componente AccountCard independiente */}
+              {filteredAccounts.map((account: Account) => (
+                <AccountCard
+                  key={account.id}
+                  account={account}
+                  onEdit={handleEditAccount}
+                  onDelete={handleDeleteAccount}
+                  onViewTransactions={handleViewTransactions}
+                  getLastUpdated={getLastUpdated}
+                  getTransactionCount={getTransactionCount}
+                />
               ))}
             </tbody>
           </table>

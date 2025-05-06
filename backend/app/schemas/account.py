@@ -1,10 +1,19 @@
 from typing import Dict, Any, List, Optional
 import uuid
 import datetime
-from pydantic import ConfigDict
+from pydantic import ConfigDict, BaseModel
 from sqlmodel import SQLModel
 
 from app.models.account import AccountBase
+
+
+class AccountTypeResponse(BaseModel):
+    """
+    Esquema para respuestas de tipos de cuenta.
+    Utilizado por el endpoint /api/v1/accounts/types.
+    """
+    name: str  # Nombre del tipo de cuenta (por ejemplo, CHECKING, SAVINGS)
+    value: str  # Valor del tipo de cuenta en minúsculas (por ejemplo, checking, savings)
 
 
 class AccountCreate(SQLModel):

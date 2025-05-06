@@ -32,6 +32,11 @@ from .currency import (
     CurrencyBase, CurrencyRead, CurrencyCreate, CurrencyUpdate,
     CurrencyPublic, CurrenciesPublic, CurrencyReadWithDetails
 )
+from .budget import (
+    BudgetBase, BudgetRead, BudgetCreate, BudgetUpdate,
+    BudgetPublic, BudgetsPublic, BudgetReadWithDetails,
+    PaginatedBudgetResponse
+)
 
 __all__ = [
     # User schemas
@@ -67,5 +72,10 @@ __all__ = [
     
     # Currency schemas
     "CurrencyBase", "CurrencyRead", "CurrencyCreate", "CurrencyUpdate",
-    "CurrencyPublic", "CurrenciesPublic", "CurrencyReadWithDetails"
+    "CurrencyPublic", "CurrenciesPublic", "CurrencyReadWithDetails",
+    
+    # Budget schemas
+    "BudgetBase", "BudgetRead", "BudgetCreate", "BudgetUpdate",
+    "BudgetPublic", "BudgetsPublic", "BudgetReadWithDetails",
+    "PaginatedBudgetResponse"
 ] 

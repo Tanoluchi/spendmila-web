@@ -72,8 +72,11 @@ export const useAccountsData = () => {
         queryClient.prefetchQuery({
           queryKey: ['account-details', account.id],
           queryFn: () => AccountService.getAccount(account.id),
-          staleTime: 60 * 1000, // 1 minuto
+          staleTime: 30 * 1000, // 30 segundos para mayor frescura de datos
         });
+      } else {
+        // Refrescar datos en segundo plano para asegurarnos de tener la información más reciente
+        queryClient.invalidateQueries({queryKey: ['account-details', account.id]});
       }
     });
   }, [accounts, queryClient]);
@@ -129,21 +132,38 @@ export const useAccountsData = () => {
   }, [accounts, queryClient]);
 
   // Obtener conteo de transacciones
-  const getTransactionCount = useCallback((accountId: string) => {
+  const getTransactionCount = useCallback(async (accountId: string) => {
     try {
-      // Intentar obtener desde la cache
-      const cachedData = queryClient.getQueryData(['account-details', accountId]);
+      // Siempre obtenemos los datos más actualizados directamente del backend
+      // para evitar inconsistencias en el contador de transacciones
+      const accountDetails = await AccountService.getAccount(accountId);
       
-      if (cachedData && typeof (cachedData as any).transaction_count === 'number') {
-        return (cachedData as any).transaction_count;
+      // Actualizar la caché con los datos más recientes
+      queryClient.setQueryData(['account-details', accountId], accountDetails);
+      
+      // Devolver el conteo preciso de transacciones desde los detalles actualizados
+      if (accountDetails && typeof accountDetails.transaction_count === 'number') {
+        return accountDetails.transaction_count;
       }
       
       return 0; // Valor predeterminado si no hay datos
     } catch (error) {
       console.error('Error getting transaction count:', error);
+      // Si ocurre un error, intentar obtener desde la caché o datos existentes
+      const cachedData = queryClient.getQueryData(['account-details', accountId]);
+      if (cachedData && typeof (cachedData as any).transaction_count === 'number') {
+        return (cachedData as any).transaction_count;
+      }
+      
+      // Último recurso: buscar en los datos base de cuentas
+      const account = accounts.find(a => a.id === accountId);
+      if (account && typeof account.transaction_count === 'number') {
+        return account.transaction_count;
+      }
+      
       return 0;
     }
-  }, [queryClient]);
+  }, [queryClient, accounts]);
 
   // Invalidar cache cuando sea necesario
   const invalidateAccountCache = useCallback(() => {

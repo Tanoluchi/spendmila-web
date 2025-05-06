@@ -1,5 +1,7 @@
-from typing import List, Optional, Dict, Any
 import uuid
+import datetime
+
+from typing import List, Optional, Dict, Any
 from sqlmodel import select, Session
 
 from app.models.account import Account
@@ -257,17 +259,26 @@ def get_last_transaction_date(db: Session, account_id: uuid.UUID) -> Optional[da
     if not account:
         return None
     
-    # Obtener la transacción más reciente por fecha
-    query = select(Transaction).where(
-        Transaction.account_id == account_id,
-        Transaction.is_active == True
-    ).order_by(desc(Transaction.date)).limit(1)
-    
-    last_transaction = db.exec(query).first()
-    
-    # Si no hay transacciones, devolver None
-    if not last_transaction:
+    try:
+        # Obtener la transacción más reciente por fecha
+        query = select(Transaction).where(
+            Transaction.account_id == account_id,
+            Transaction.is_active == True
+        ).order_by(desc(Transaction.date)).limit(1)
+        
+        last_transaction = db.exec(query).first()
+        
+        # Si no hay transacciones, devolver None
+        if not last_transaction:
+            return None
+        
+        # Verificar que last_transaction tiene el atributo date
+        if not hasattr(last_transaction, 'date'):
+            return None
+            
+        # Convertir la fecha (date) a datetime
+        return datetime.datetime.combine(last_transaction.date, datetime.time())
+    except Exception as e:
+        # Log the error and return None in case of any exception
+        print(f"Error getting last transaction date: {e}")
         return None
-    
-    # Convertir la fecha (date) a datetime
-    return datetime.datetime.combine(last_transaction.date, datetime.time())

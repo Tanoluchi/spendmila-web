@@ -1,8 +1,6 @@
 import logging
 import datetime
-import uuid
-from decimal import Decimal
-from typing import Dict, List, Optional
+import random
 
 from sqlmodel import Session, select
 
@@ -16,6 +14,7 @@ from app.models.financial_goal import FinancialGoal
 from app.models.subscription import Subscription
 from app.models.payment_method import PaymentMethod
 from app.models.category import Category
+from app.models.budget import Budget
 from app.schemas.user import UserCreate
 from app.schemas.currency import CurrencyCreate
 from app.schemas.category import CategoryCreate
@@ -25,12 +24,14 @@ from app.schemas.transaction import TransactionCreate
 from app.schemas.debt import DebtCreate
 from app.schemas.financial_goal import FinancialGoalCreate
 from app.schemas.subscription import SubscriptionCreate
+from app.schemas.budget import BudgetCreate
 from app.crud import account as account_crud
 from app.crud import transaction as transaction_crud
 from app.crud import payment_method as payment_method_crud
 from app.crud import debt as debt_crud
 from app.crud import financial_goal as financial_goal_crud
 from app.crud import subscription as subscription_crud
+from app.crud import budget as budget_crud
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -45,6 +46,7 @@ created_ids = {
     "debts": {},
     "financial_goals": {},
     "subscriptions": {},
+    "budgets": {},
 }
 
 
@@ -57,6 +59,18 @@ def clear_existing_data(session: Session) -> None:
     """Clear existing data using CRUD functions."""
     logger.info("Clearing existing data...")
     
+    # First, delete all transactions as they have foreign key constraints to other entities
+    # This ensures we don't have constraint violations when deleting referenced entities
+    logger.info("Deleting all transactions...")
+    from app.models.transaction import Transaction
+    statement = select(Transaction).where(Transaction.id != None)
+    transactions = session.exec(statement).all()
+    for transaction in transactions:
+        logger.info(f"Deleting transaction: {transaction.id}")
+        session.delete(transaction)
+    # Commit to ensure transactions are deleted before proceeding
+    session.commit()
+    
     # Get all users except the superuser
     statement = select(User).where(User.email != settings.FIRST_SUPERUSER)
     users = session.exec(statement).all()
@@ -64,12 +78,6 @@ def clear_existing_data(session: Session) -> None:
     # Delete all test users and their related data
     for user in users:
         logger.info(f"Deleting data for user: {user.email}")
-        
-        # Delete transactions
-        transactions = transaction_crud.get_transactions(session=session, user_id=user.id)
-        for transaction in transactions:
-            logger.info(f"Deleting transaction: {transaction.id}")
-            transaction_crud.delete_transaction(session=session, db_transaction=transaction)
         
         # Delete accounts
         accounts = account_crud.get_accounts(db=session, user_id=user.id)
@@ -97,6 +105,13 @@ def clear_existing_data(session: Session) -> None:
         for subscription in subscriptions:
             logger.info(f"Deleting subscription: {subscription.id}")
             session.delete(subscription)
+            
+        # Delete budgets
+        statement = select(Budget).where(Budget.user_id == user.id)
+        budgets = session.exec(statement).all()
+        for budget in budgets:
+            logger.info(f"Deleting budget: {budget.id}")
+            session.delete(budget)
         
         # Delete payment methods
         statement = select(PaymentMethod).where(PaymentMethod.id != None)
@@ -266,34 +281,54 @@ def create_test_accounts(session: Session) -> None:
     """Create test accounts."""
     logger.info("Creating test accounts...")
     
+    # Definir fechas de creación variadas para las cuentas (últimos 18 meses) para datos más realistas
+    today = datetime.datetime.now()
+    creation_dates = [
+        today - datetime.timedelta(days=547),  # ~18 meses atrás
+        today - datetime.timedelta(days=365),  # ~12 meses atrás
+        today - datetime.timedelta(days=182),  # ~6 meses atrás
+        today - datetime.timedelta(days=90),   # ~3 meses atrás
+    ]
+    
     accounts = [
-        {"name": "Checking Account", "description": "Primary checking", "balance": 2500.00, "currency_code": "USD", "account_type": "bank"},
-        {"name": "Savings Account", "description": "Emergency fund", "balance": 10000.00, "currency_code": "USD", "account_type": "bank"},
-        {"name": "Investment Account", "description": "Stocks and bonds", "balance": 15000.00, "currency_code": "USD", "account_type": "other"},
-        {"name": "Euro Account", "description": "Euro savings", "balance": 5000.00, "currency_code": "EUR", "account_type": "bank"},
+        {"name": "Checking Account", "description": "Primary checking", "balance": 2500.00, "currency_code": "USD", "account_type": "bank", "created_at": creation_dates[0]},
+        {"name": "Savings Account", "description": "Emergency fund", "balance": 10000.00, "currency_code": "USD", "account_type": "bank", "created_at": creation_dates[1]},
+        {"name": "Investment Account", "description": "Stocks and bonds", "balance": 15000.00, "currency_code": "USD", "account_type": "other", "created_at": creation_dates[2]},
+        {"name": "Euro Account", "description": "Euro savings", "balance": 5000.00, "currency_code": "EUR", "account_type": "bank", "created_at": creation_dates[3]},
     ]
     
     for account_data in accounts:
         currency_code = account_data.pop("currency_code")
         currency_id = created_ids["currencies"][currency_code]
+        creation_date = account_data.pop("created_at")
         
         # Create account for each user
-        for email, user_id in created_ids["users"].items():
+        for i, (email, user_id) in enumerate(created_ids["users"].items()):
+            # Agregar una pequeña variación a la fecha de creación para cada usuario
+            user_creation_date = creation_date + datetime.timedelta(days=i)
+            
             account = AccountCreate(
                 **account_data,
                 currency_id=currency_id,
                 user_id=user_id
             )
             
+            # Crear la cuenta
             db_account = account_crud.create_account(
                 db=session, 
                 account=account,
                 user_id=user_id
             )
             
+            # Establecer explícitamente la fecha de creación
+            db_account.created_at = user_creation_date
+            session.add(db_account)
+            session.commit()
+            
             # Store with composite key for reference
             key = f"{email}:{account_data['name']}"
             created_ids["accounts"][key] = db_account.id
+            logger.info(f"Created account {account_data['name']} for {email} with creation date {user_creation_date}")
         
     logger.info(f"Created accounts for {len(created_ids['users'])} users")
 
@@ -302,6 +337,7 @@ def create_test_debts(session: Session) -> None:
     """Create test debts."""
     logger.info("Creating test debts...")
     
+    # Lista de deudas con sus detalles
     debts = [
         {
             "creditor_name": "Auto Finance Bank",
@@ -354,6 +390,7 @@ def create_test_debts(session: Session) -> None:
             # Create a copy of the debt data to avoid modifying the original
             debt_copy = debt_data.copy()
             
+            # Crear la deuda
             debt = DebtCreate(
                 **debt_copy,
                 account_id=account_id
@@ -368,6 +405,7 @@ def create_test_debts(session: Session) -> None:
             # Store with composite key for reference
             key = f"{email}:{debt_data['creditor_name']}"
             created_ids["debts"][key] = db_debt.id
+            logger.info(f"Created debt {debt_data['creditor_name']} ({db_debt.id}) for {email}")
         
     logger.info(f"Created debts for {len(created_ids['users'])} users")
 
@@ -477,13 +515,102 @@ def create_test_subscriptions(session: Session) -> None:
     logger.info(f"Created subscriptions for {len(created_ids['users'])} users")
 
 
+def create_debt_transactions(session: Session) -> None:
+    """Create transactions associated with debts."""
+    logger.info("Creating debt-related transactions...")
+    
+    # Para cada usuario y cada deuda, crearemos transacciones de pago
+    today = datetime.date.today()
+    
+    # Obtener categorías relevantes para transacciones de deuda
+    expense_category_id = created_ids["categories"].get("Housing")  # Usamos Housing como categoría por defecto
+    if not expense_category_id:
+        logger.warning("No expense category found for debt transactions, using first available")
+        expense_category_id = next(iter(created_ids["categories"].values()))
+    
+    payment_method_id = None
+    payment_methods = payment_method_crud.get_payment_methods(session=session)
+    if payment_methods:
+        payment_method_id = payment_methods[0].id
+    
+    # Iterar por usuarios y deudas
+    for email, user_id in created_ids["users"].items():
+        for debt_key, debt_id in created_ids["debts"].items():
+            if not debt_key.startswith(email + ":"):
+                continue  # Saltar deudas que no pertenecen a este usuario
+                
+            # Obtener detalles de la deuda
+            debt = debt_crud.get_debt(session=session, debt_id=debt_id, user_id=user_id)
+            if not debt:
+                logger.warning(f"Debt {debt_id} not found, skipping transaction creation")
+                continue
+                
+            # Obtener una cuenta para este usuario (preferiblemente la asociada a la deuda)
+            account_id = debt.account_id
+            if not account_id:
+                account_key = f"{email}:Checking Account"
+                account_id = created_ids["accounts"].get(account_key)
+            
+            # Crear transacciones para pagos mensuales de la deuda
+            num_payments = 6  # Crear historial de 6 pagos anteriores
+            
+            for i in range(num_payments):
+                # Fecha del pago (mensual retroactivo)
+                payment_date = today - datetime.timedelta(days=30 * (num_payments - i))
+                
+                # Variar ligeramente el monto del pago para hacerlo más realista
+                variation = 1.0 + (random.random() * 0.2 - 0.1)  # ±10%
+                payment_amount = debt.minimum_payment * variation
+                
+                # Crear la transacción de pago de deuda
+                transaction = TransactionCreate(
+                    date=payment_date,
+                    amount=payment_amount,
+                    description=f"Payment to {debt.creditor_name}",
+                    transaction_type=TransactionType.EXPENSE,
+                    category_id=expense_category_id,
+                    payment_method_id=payment_method_id,
+                    currency_id=debt.currency_id,
+                    account_id=account_id,
+                    debt_id=debt_id
+                )
+                
+                db_transaction = transaction_crud.create_transaction(
+                    session=session,
+                    transaction_in=transaction,
+                    user_id=user_id
+                )
+                
+                logger.info(f"Created debt payment transaction {db_transaction.id} for {email}'s debt {debt.creditor_name} on {payment_date}")
+    
+    # Commitear todos los cambios
+    session.commit()
+    logger.info("Created debt-related transactions successfully")
+
+
 def create_test_transactions(session: Session) -> None:
     """Create test transactions."""
     logger.info("Creating test transactions...")
     
+    # Primero generamos las transacciones asociadas a deudas
+    create_debt_transactions(session)
+    
     # Create transactions for the past 3 months
     today = datetime.date.today()
     start_date = today.replace(day=1) - datetime.timedelta(days=90)
+    
+    # Budget to category mapping to associate transactions with appropriate budgets
+    budget_category_mapping = {
+        "Gastos Mensuales": ["Housing", "Utilities"],
+        "Transporte": ["Transportation"],
+        "Alimentación": ["Food"],
+        "Servicios": ["Utilities"],
+        "Entretenimiento": ["Entertainment"],
+        "Salud": ["Healthcare"],
+        "Personal": ["Shopping", "Personal Care"],
+        "Educación": ["Education"],
+        "Ahorros": []  # Savings typically don't have expense categories
+    }
     
     # Transaction templates
     transaction_templates = [
@@ -576,8 +703,8 @@ def create_test_transactions(session: Session) -> None:
                     date=current_date,
                     currency_id=created_ids["currencies"]["USD"],
                     category_id=created_ids["categories"][income_template["category_name"]],
-                    account_id=created_ids["accounts"][account_key],
-                    payment_method_id=created_ids["payment_methods"][payment_method_key]
+                    account_id=created_ids["accounts"].get(account_key),
+                    payment_method_id=created_ids["payment_methods"].get(payment_method_key)
                 )
                 
                 transaction_crud.create_transaction(
@@ -599,9 +726,9 @@ def create_test_transactions(session: Session) -> None:
                     transaction_type=rent_template["transaction_type"],
                     date=current_date,
                     currency_id=created_ids["currencies"]["USD"],
-                    category_id=created_ids["categories"][rent_template["category_name"]],
-                    account_id=created_ids["accounts"][account_key],
-                    payment_method_id=created_ids["payment_methods"][payment_method_key]
+                    category_id=created_ids["categories"].get(rent_template["category_name"]),
+                    account_id=created_ids["accounts"].get(account_key),
+                    payment_method_id=created_ids["payment_methods"].get(payment_method_key)
                 )
                 
                 transaction_crud.create_transaction(
@@ -624,8 +751,8 @@ def create_test_transactions(session: Session) -> None:
                     date=current_date,
                     currency_id=created_ids["currencies"]["USD"],
                     category_id=created_ids["categories"][grocery_template["category_name"]],
-                    account_id=created_ids["accounts"][account_key],
-                    payment_method_id=created_ids["payment_methods"][payment_method_key]
+                    account_id=created_ids["accounts"].get(account_key),
+                    payment_method_id=created_ids["payment_methods"].get(payment_method_key)
                 )
                 
                 transaction_crud.create_transaction(
@@ -648,8 +775,8 @@ def create_test_transactions(session: Session) -> None:
                         date=current_date,
                         currency_id=created_ids["currencies"]["USD"],
                         category_id=created_ids["categories"][bill_template["category_name"]],
-                        account_id=created_ids["accounts"][account_key],
-                        payment_method_id=created_ids["payment_methods"][payment_method_key]
+                        account_id=created_ids["accounts"].get(account_key),
+                        payment_method_id=created_ids["payment_methods"].get(payment_method_key)
                     )
                     
                     transaction_crud.create_transaction(
@@ -680,9 +807,9 @@ def create_test_transactions(session: Session) -> None:
                     transaction_type=template["transaction_type"],
                     date=current_date,
                     currency_id=created_ids["currencies"]["USD"],
-                    category_id=created_ids["categories"][template["category_name"]],
-                    account_id=created_ids["accounts"][account_key],
-                    payment_method_id=created_ids["payment_methods"][payment_method_key]
+                    category_id=created_ids["categories"].get(template["category_name"]),
+                    account_id=created_ids["accounts"].get(account_key),
+                    payment_method_id=created_ids["payment_methods"].get(payment_method_key)
                 )
                 
                 transaction_crud.create_transaction(
@@ -696,6 +823,82 @@ def create_test_transactions(session: Session) -> None:
             current_date += datetime.timedelta(days=1)
         
         logger.info(f"Created {transaction_count} transactions for user {email}")
+
+
+def create_test_budgets(session: Session) -> None:
+    """Create test budgets for users."""
+    logger.info("Creating test budgets...")
+    
+    # Budget data for each user with names and colors
+    budget_data = [
+        {"name": "Gastos Mensuales", "color": "#4A90E2"}, 
+        {"name": "Transporte", "color": "#50E3C2"}, 
+        {"name": "Alimentación", "color": "#F5A623"}, 
+        {"name": "Servicios", "color": "#D0021B"}, 
+        {"name": "Entretenimiento", "color": "#9013FE"}, 
+        {"name": "Salud", "color": "#7ED321"}, 
+        {"name": "Personal", "color": "#BD10E0"}, 
+        {"name": "Educación", "color": "#4A4A4A"}, 
+        {"name": "Ahorros", "color": "#417505"}
+    ]
+
+    budget_to_category_name_map = {
+        "Gastos Mensuales": "Housing",
+        "Transporte": "Transportation",
+        "Alimentación": "Food",
+        "Servicios": "Utilities",
+        "Entretenimiento": "Entertainment",
+        "Salud": "Healthcare",
+        "Personal": "Personal",
+        "Educación": "Education",
+        "Ahorros": "Savings"
+    }
+    
+    # Create budgets for each user
+    for email, user_id in created_ids["users"].items():
+        if email == settings.FIRST_SUPERUSER:
+            continue  # Skip superuser
+        
+        # Count of budgets created for this user
+        budget_count = 0
+        
+        # Create a budget for each type (up to 5 budgets per user)
+        for budget_info in budget_data[:5]:  # Limit to 5 budgets
+            # Generate a random amount for the budget
+            amount = random.randint(1000, 10000)
+
+            category_name = budget_to_category_name_map.get(budget_info["name"])
+            category_id = None
+            if category_name:
+                category_id = created_ids["categories"].get(category_name)
+            
+            if not category_id:
+                logger.warning(f"Category not found for budget '{budget_info['name']}'. Skipping budget creation for user {email}.")
+                continue
+            
+            budget_in = BudgetCreate(
+                name=budget_info["name"],
+                amount=amount,
+                color=budget_info["color"],
+                category_id=category_id  # Assign category_id
+            )
+            
+            try:
+                budget = budget_crud.create_budget(
+                    session=session,
+                    budget_in=budget_in,
+                    user_id=user_id
+                )
+                
+                # Store budget ID
+                created_ids["budgets"][f"{email}_{budget_info['name']}"] = budget.id
+                budget_count += 1
+                logger.info(f"Created budget: {budget.name} for user {email}")
+                
+            except Exception as e:
+                logger.error(f"Error creating budget for {email}: {str(e)}")
+        
+        logger.info(f"Created {budget_count} budgets for user {email}")
 
 
 def populate_test_data(force: bool = False) -> None:
@@ -724,7 +927,8 @@ def populate_test_data(force: bool = False) -> None:
         create_test_debts(session)
         create_test_financial_goals(session)
         create_test_subscriptions(session)
-        create_test_transactions(session)
+        create_test_budgets(session)  # Create budgets before transactions
+        create_test_transactions(session)  # Now transactions can be linked to budgets
     
     logger.info("Test data population completed successfully.")
 

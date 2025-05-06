@@ -1,4 +1,5 @@
 import uuid
+import datetime
 from datetime import date
 from typing import TYPE_CHECKING, Optional, ForwardRef, List
 
@@ -32,6 +33,8 @@ class SubscriptionBase(SQLModel):
     color: Optional[str] = Field(default=None, max_length=50)  # Color code for subscription
     description: Optional[str] = Field(default=None, max_length=255)  # Description of the subscription
     reminder_days: Optional[int] = Field(default=3, ge=0)  # Days before to remind about payment
+    created_at: datetime.datetime = Field(default_factory=datetime.datetime.now)
+    updated_at: datetime.datetime = Field(default_factory=datetime.datetime.now)
 
     # Foreign Keys
     user_id: uuid.UUID = Field(foreign_key="user.id", index=True)

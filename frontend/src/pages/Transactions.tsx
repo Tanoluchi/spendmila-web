@@ -42,7 +42,19 @@ function Transactions() {
   const { categories, isLoading: categoriesLoading } = useCategories();
   
   // Apply time filter to transactions
+  // Note: We now handle all filtering server-side except for time filter
   const filteredTransactions = applyTimeFilter(transactions, timeFilter);
+  
+  // Log the filters currently being used for debugging
+  useEffect(() => {
+    console.log('Active filters:', {
+      category: categoryFilter,
+      account: accountFilter,
+      time: timeFilter,
+      page: currentPage,
+      pageSize
+    });
+  }, [categoryFilter, accountFilter, timeFilter, currentPage, pageSize]);
 
   // Calculate summary based on filtered transactions
   const filteredSummary = calculateTransactionSummary(filteredTransactions);

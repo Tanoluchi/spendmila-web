@@ -6,6 +6,19 @@
 import { Category } from "@/client/services/TransactionService";
 import { Currency } from "@/client/services/TransactionService";
 import { Account } from "@/client/services/TransactionService";
+import { Budget } from "@/client/services/BudgetService";
+
+// Filter interface for transaction queries
+export interface TransactionFilter {
+  page?: number;
+  page_size?: number;
+  limit?: number;
+  category_name?: string;
+  account_id?: string;
+  category_id?: string;
+  start_date?: string;
+  end_date?: string;
+}
 
 export interface PaymentMethod {
   id: string;
@@ -46,6 +59,7 @@ export interface TransactionCreate {
   currency_id: string;
   category_id: string;
   payment_method_id: string;
+  budget_id?: string;
   subscription_id?: string;
   financial_goal_id?: string;
   debt_id?: string;
@@ -62,6 +76,7 @@ export interface Transaction {
   currency_id?: string;
   category_id?: string;
   payment_method_id?: string;
+  budget_id?: string;
   subscription_id?: string;
   financial_goal_id?: string;
   debt_id?: string;
@@ -76,6 +91,7 @@ export interface Transaction {
   currency?: Currency;
   account?: Account;
   payment_method?: PaymentMethod;
+  budget?: Budget;
   subscription?: Subscription;
   financial_goal?: FinancialGoal;
   debt?: Debt;
