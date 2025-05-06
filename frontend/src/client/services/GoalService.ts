@@ -8,7 +8,10 @@ export interface Goal {
   name: string;
   target_amount: number;
   current_amount: number;
-  target_date: string;
+  deadline?: string; // Changed from target_date to match backend
+  target_date?: string; // Keep for backward compatibility
+  status?: string; // Added to match backend
+  goal_type?: string; // Added to match backend
   user_id: string;
   currency_id: string;
   account_id?: string;

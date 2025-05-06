@@ -36,6 +36,10 @@ def create_financial_goal(
     goal_data["user_id"] = user_id
     # Ensure current_amount starts at 0 or provided value (but usually 0 on creation)
     goal_data["current_amount"] = goal_data.get("current_amount", 0)
+    
+    # Remove any potential currency_id that might be in the request
+    if "currency_id" in goal_data:
+        del goal_data["currency_id"]
 
     db_goal = FinancialGoal.model_validate(goal_data)
     session.add(db_goal)
@@ -50,7 +54,12 @@ def update_financial_goal(
     """Update an existing financial goal."""
     # Exclude current_amount from direct update via this method
     # It should be updated via add_saving_to_goal
-    update_data = goal_in.model_dump(exclude_unset=True, exclude={"current_amount"})
+    update_data = goal_in.model_dump(exclude_unset=True, exclude={"current_amount", "currency_id"})
+    
+    # Ensure we're not updating currency_id
+    if "currency_id" in update_data:
+        del update_data["currency_id"]
+        
     db_goal.sqlmodel_update(update_data)
     session.add(db_goal)
     session.commit()

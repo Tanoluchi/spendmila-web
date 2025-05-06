@@ -29,13 +29,11 @@ class FinancialGoalBase(SQLModel):
     goal_type: FinancialGoalType = Field(default=FinancialGoalType.SAVINGS, index=True)
     description: Optional[str] = Field(default=None, max_length=255)
     icon: Optional[str] = Field(default=None, max_length=255)  # Icon for the goal
-    color: Optional[str] = Field(default=None, max_length=50)  # Color code for the goal
     created_at: datetime.datetime = Field(default_factory=datetime.datetime.now)
     updated_at: datetime.datetime = Field(default_factory=datetime.datetime.now)
 
     # Foreign Keys
     user_id: uuid.UUID = Field(foreign_key="user.id", index=True)
-    currency_id: uuid.UUID = Field(foreign_key="currency.id", index=True)
 
 
 class FinancialGoal(FinancialGoalBase, table=True):
@@ -48,7 +46,6 @@ class FinancialGoal(FinancialGoalBase, table=True):
 
     # Relationships
     user: User = Relationship(back_populates="financial_goals")
-    currency: Currency = Relationship(back_populates="financial_goals")
     transactions: List["Transaction"] = Relationship(back_populates="financial_goal")
 
 

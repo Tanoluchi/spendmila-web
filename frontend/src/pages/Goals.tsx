@@ -1,146 +1,213 @@
-import React, { useState } from 'react';
-import { Plus } from 'lucide-react';
-import AddGoal from '@/components/Modals/AddGoal';
 
-function Goals() {
-  const [isModalOpen, setIsModalOpen] = useState(false);
+import React, { useState, useMemo } from 'react';
+import { SidebarProvider, Sidebar, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarGroup, SidebarGroupContent, SidebarHeader, SidebarSeparator, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar";
+import { BarChart2, FileText, Landmark, CreditCard, PieChart, BarChart, ArrowDownToLine, ArrowUpFromLine, Settings, HelpCircle, Menu } from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useNavigate } from "@tanstack/react-router";
+import { useGoals } from "@/hooks/useGoals";
+import { type Goal } from "@/client/services/GoalService";
+
+// Get the proper goal type from the backend field
+const getGoalType = (goal: Goal): string => {
+  return goal.goal_type || 'other';
+};
+
+// Format goal date with fallback
+const formatGoalDate = (goal: Goal): string => {
+  // Check deadline first (new field), then target_date (legacy field)
+  const dateString = goal.deadline || goal.target_date;
+  if (!dateString) return 'No deadline set';
+  
+  try {
+    return new Date(dateString).toLocaleDateString();
+  } catch (e) {
+    return 'Invalid date';
+  }
+};
+
+const Goals = () => {
+  const [activeSection, setActiveSection] = useState("Goals");
+  const [activeTab, setActiveTab] = useState("all");
+  const navigate = useNavigate();
+  
+  // Fetch goals data from API
+  const { goals, isLoading, error, calculateGoalProgress } = useGoals();
+  
+  // Get unique goal types from user's goals for dynamic filtering
+  const uniqueGoalTypes = useMemo(() => {
+    if (!goals || goals.length === 0) return [];
+    
+    // Get all unique goal types from user's goals
+    const types = [...new Set(goals.map(goal => getGoalType(goal)))];
+    return types;
+  }, [goals]);
+  
+  // Filter goals based on active tab
+  const filteredGoals = activeTab === "all" 
+    ? goals 
+    : goals.filter(goal => getGoalType(goal) === activeTab.toLowerCase());
+
+  // Calculate metrics
+  const totalSaved = goals.reduce((sum, goal) => sum + goal.current_amount, 0);
+  const totalGoals = goals.reduce((sum, goal) => sum + goal.target_amount, 0);
+  
+  // Sort goals by progress percentage (descending)
+  const sortedGoals = [...filteredGoals].sort((a, b) => {
+    const aProgress = (a.current_amount / a.target_amount) * 100;
+    const bProgress = (b.current_amount / b.target_amount) * 100;
+    return bProgress - aProgress;
+  });
   
   return (
-    <div className="grid gap-6 dark:text-gray-200">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">Financial Goals</h2>
-        <button 
-          className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md inline-flex items-center gap-2 z-10"
-          onClick={() => setIsModalOpen(true)}
-        >
-          <Plus size={16} />
-          Add New Goal
-        </button>
+    <SidebarProvider defaultOpen={true}>
+      <div className="flex min-h-screen w-full bg-background dark:text-gray-200">
+        {/* Main Content */}
+        <SidebarInset className="p-4 md:p-6 overflow-y-auto">
+          
+          <div className="grid gap-6">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
+              <div>
+                <h1 className="text-2xl font-bold">Financial Goals</h1>
+                <p className="text-muted-foreground">Track progress towards your financial objectives</p>
+              </div>
+              <Button className="mt-2 md:mt-0 bg-purple hover:bg-purple-dark" onClick={() => navigate({ to: '/goals/new' })}>Create New Goal</Button>
+            </div>
+            
+            <div className="flex flex-col md:flex-row gap-4">
+              <Card className="flex-1">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg">Progress to Goals</CardTitle>
+                  <CardDescription>Total savings accumulated</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex flex-col">
+                    <p className="text-2xl font-bold text-blue-600">${totalSaved.toLocaleString()}</p>
+                    <p className="text-sm text-muted-foreground">of ${totalGoals.toLocaleString()} total</p>
+                  </div>
+                </CardContent>
+                <CardFooter>
+                  <div className="w-full">
+                    <div className="flex justify-between text-sm mb-1">
+                      <span>Overall Progress</span>
+                      <span>{Math.round((totalSaved / totalGoals) * 100) || 0}%</span>
+                    </div>
+                    <Progress value={Math.round((totalSaved / totalGoals) * 100) || 0} />
+                  </div>
+                </CardFooter>
+              </Card>
+              <Card className="flex-1">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg">Active Goals</CardTitle>
+                  <CardDescription>Goals currently being tracked</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex flex-col">
+                    <p className="text-2xl font-bold text-green-600">{goals.length}</p>
+                    <p className="text-sm text-muted-foreground">financial goals</p>
+                  </div>
+                </CardContent>
+                <CardFooter>
+                  <Button variant="outline" size="sm" className="w-full" onClick={() => setActiveTab("all")}>View All</Button>
+                </CardFooter>
+              </Card>
+            </div>
+            
+            <Card>
+              <CardHeader>
+                <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab}>
+                  <TabsList>
+                    <TabsTrigger value="all">All Goals</TabsTrigger>
+                    {uniqueGoalTypes.map((type) => (
+                      <TabsTrigger key={type} value={type}>
+                        {type.charAt(0).toUpperCase() + type.slice(1).replace('_', ' ')}
+                      </TabsTrigger>
+                    ))}
+                  </TabsList>
+                </Tabs>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-6">
+                  {isLoading ? (
+                    <div className="text-center py-10">
+                      <p className="text-lg text-muted-foreground">Loading goals...</p>
+                    </div>
+                  ) : error ? (
+                    <div className="text-center py-10">
+                      <p className="text-lg text-red-500">Error loading goals. Please try again.</p>
+                      <Button onClick={() => window.location.reload()} className="mt-4">Refresh</Button>
+                    </div>
+                  ) : sortedGoals.map((goal) => (
+                    <div key={goal.id} className="border rounded-lg p-4">
+                      <div className="flex flex-col md:flex-row justify-between mb-4">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-lg font-bold">{goal.name}</h3>
+                            {/* Priority tag based on progress */}
+                            <span className={`text-xs px-2 py-1 rounded-full ${
+                              calculateGoalProgress(goal) >= 80
+                                ? "bg-green-100 text-green-600" 
+                                : calculateGoalProgress(goal) >= 50
+                                ? "bg-amber-100 text-amber-600"
+                                : "bg-rose-100 text-rose-600"
+                            }`}>
+                              {calculateGoalProgress(goal) >= 80 ? 'Almost There' : calculateGoalProgress(goal) >= 50 ? 'On Track' : 'In Progress'}
+                            </span>
+                          </div>
+                          <p className="text-muted-foreground text-sm mt-1">{getGoalType(goal)}</p>
+                        </div>
+                        <div className="mt-2 md:mt-0">
+                          <div className="text-right">
+                            <p className="text-lg font-bold">
+                              ${goal.current_amount.toLocaleString()} <span className="text-muted-foreground text-sm font-normal">of ${goal.target_amount.toLocaleString()}</span>
+                            </p>
+                            <p className="text-sm text-muted-foreground">Target date: {formatGoalDate(goal)}</p>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="mb-4">
+                        <div className="flex justify-between text-sm mb-1">
+                          <span>{Math.round(calculateGoalProgress(goal))}% Complete</span>
+                          <span>${(goal.target_amount - goal.current_amount).toLocaleString()} to go</span>
+                        </div>
+                        <Progress value={Math.round(calculateGoalProgress(goal))} />
+                      </div>
+                      
+                      <div className="flex justify-between items-start mt-3">
+                        {goal.description ? (
+                          <div className="text-sm text-muted-foreground flex-1 pr-4">
+                            <p className="font-medium">Notes:</p>
+                            <p>{goal.description}</p>
+                          </div>
+                        ) : (
+                          <div className="flex-1"></div>
+                        )}
+                        
+                        <div className="flex gap-2 ml-auto">
+                          <Button variant="outline" size="sm">Contribute</Button>
+                          <Button variant="outline" size="sm" onClick={() => navigate({ to: `/goals/${goal.id}` })}>Edit</Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                
+                {!isLoading && !error && filteredGoals.length === 0 && (
+                  <div className="text-center py-10">
+                    <p className="text-lg text-muted-foreground">No goals found in this category</p>
+                    <Button className="mt-4">Add New Goal</Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </SidebarInset>
       </div>
-      
-      <AddGoal isOpen={isModalOpen} onOpenChange={setIsModalOpen} />
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {/* Sample goal cards - would be replaced with actual data */}
-        <div className="bg-card rounded-lg shadow-sm p-4 border-t-4 border-blue-500">
-          <div className="flex justify-between items-start">
-            <h3 className="font-medium">Emergency Fund</h3>
-            <div className="flex gap-2">
-              <button className="text-muted-foreground hover:text-foreground">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
-              </button>
-              <button className="text-muted-foreground hover:text-foreground">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-              </button>
-            </div>
-          </div>
-          <p className="text-sm text-muted-foreground mt-1">Save 6 months of expenses</p>
-          <div className="mt-4">
-            <div className="flex justify-between text-sm mb-1">
-              <span>Progress</span>
-              <span>$6,000 / $15,000</span>
-            </div>
-            <div className="w-full bg-muted rounded-full h-2.5">
-              <div className="bg-blue-500 h-2.5 rounded-full" style={{ width: '40%' }}></div>
-            </div>
-            <div className="flex justify-between text-sm mt-2">
-              <span className="text-muted-foreground">40% complete</span>
-              <span className="text-muted-foreground">Target: Dec 2025</span>
-            </div>
-          </div>
-          <button className="mt-4 w-full bg-background border border-input hover:bg-muted/50 rounded-md py-1.5 text-sm">Add Funds</button>
-        </div>
-        
-        <div className="bg-card rounded-lg shadow-sm p-4 border-t-4 border-green-500">
-          <div className="flex justify-between items-start">
-            <h3 className="font-medium">Vacation Fund</h3>
-            <div className="flex gap-2">
-              <button className="text-muted-foreground hover:text-foreground">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
-              </button>
-              <button className="text-muted-foreground hover:text-foreground">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-              </button>
-            </div>
-          </div>
-          <p className="text-sm text-muted-foreground mt-1">Trip to Europe</p>
-          <div className="mt-4">
-            <div className="flex justify-between text-sm mb-1">
-              <span>Progress</span>
-              <span>$2,500 / $5,000</span>
-            </div>
-            <div className="w-full bg-muted rounded-full h-2.5">
-              <div className="bg-green-500 h-2.5 rounded-full" style={{ width: '50%' }}></div>
-            </div>
-            <div className="flex justify-between text-sm mt-2">
-              <span className="text-muted-foreground">50% complete</span>
-              <span className="text-muted-foreground">Target: Jul 2025</span>
-            </div>
-          </div>
-          <button className="mt-4 w-full bg-background border border-input hover:bg-muted/50 rounded-md py-1.5 text-sm">Add Funds</button>
-        </div>
-        
-        <div className="bg-card rounded-lg shadow-sm p-4 border-t-4 border-purple-500">
-          <div className="flex justify-between items-start">
-            <h3 className="font-medium">New Car</h3>
-            <div className="flex gap-2">
-              <button className="text-muted-foreground hover:text-foreground">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
-              </button>
-              <button className="text-muted-foreground hover:text-foreground">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-              </button>
-            </div>
-          </div>
-          <p className="text-sm text-muted-foreground mt-1">Down payment for new vehicle</p>
-          <div className="mt-4">
-            <div className="flex justify-between text-sm mb-1">
-              <span>Progress</span>
-              <span>$3,000 / $10,000</span>
-            </div>
-            <div className="w-full bg-muted rounded-full h-2.5">
-              <div className="bg-purple-500 h-2.5 rounded-full" style={{ width: '30%' }}></div>
-            </div>
-            <div className="flex justify-between text-sm mt-2">
-              <span className="text-muted-foreground">30% complete</span>
-              <span className="text-muted-foreground">Target: Oct 2026</span>
-            </div>
-          </div>
-          <button className="mt-4 w-full bg-background border border-input hover:bg-muted/50 rounded-md py-1.5 text-sm">Add Funds</button>
-        </div>
-      </div>
-      
-      <div className="bg-card rounded-lg shadow-sm p-4">
-        <h3 className="text-lg font-medium mb-4">Goal Summary</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="p-3 bg-background rounded-md">
-            <p className="text-sm text-muted-foreground">Total Goals Amount</p>
-            <p className="text-xl font-bold">$30,000.00</p>
-          </div>
-          <div className="p-3 bg-background rounded-md">
-            <p className="text-sm text-muted-foreground">Current Savings</p>
-            <p className="text-xl font-bold">$11,500.00</p>
-          </div>
-          <div className="p-3 bg-background rounded-md">
-            <p className="text-sm text-muted-foreground">Monthly Contribution</p>
-            <p className="text-xl font-bold">$850.00</p>
-          </div>
-        </div>
-      </div>
-      
-      <div className="bg-card rounded-lg shadow-sm p-4">
-        <h3 className="text-lg font-medium mb-4">Goal Recommendations</h3>
-        <div className="space-y-3">
-          <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md">
-            <p className="text-sm">Based on your income and expenses, you could increase your monthly goal contributions by $150 to reach your targets sooner.</p>
-          </div>
-          <div className="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-md">
-            <p className="text-sm">Your Emergency Fund is your highest priority goal. Consider allocating more funds to reach this goal faster.</p>
-          </div>
-        </div>
-      </div>
-    </div>
+    </SidebarProvider>
   );
-}
+};
 
 export default Goals;

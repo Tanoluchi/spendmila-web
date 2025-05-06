@@ -1,8 +1,8 @@
 """Initial
 
-Revision ID: 10102d76646c
+Revision ID: c8775261550f
 Revises: 
-Create Date: 2025-05-06 10:07:43.765174
+Create Date: 2025-05-06 20:32:10.313435
 
 """
 from alembic import op
@@ -11,7 +11,7 @@ import sqlmodel.sql.sqltypes
 
 
 # revision identifiers, used by Alembic.
-revision = '10102d76646c'
+revision = 'c8775261550f'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -117,17 +117,13 @@ def upgrade():
     sa.Column('goal_type', sa.Enum('SAVINGS', 'INVESTMENT', 'DEBT_PAYMENT', 'EMERGENCY_FUND', 'RETIREMENT', 'EDUCATION', 'TRAVEL', 'HOME', 'OTHER', name='financialgoaltype'), nullable=False),
     sa.Column('description', sqlmodel.sql.sqltypes.AutoString(length=255), nullable=True),
     sa.Column('icon', sqlmodel.sql.sqltypes.AutoString(length=255), nullable=True),
-    sa.Column('color', sqlmodel.sql.sqltypes.AutoString(length=50), nullable=True),
     sa.Column('created_at', sa.DateTime(), nullable=False),
     sa.Column('updated_at', sa.DateTime(), nullable=False),
     sa.Column('user_id', sa.Uuid(), nullable=False),
-    sa.Column('currency_id', sa.Uuid(), nullable=False),
     sa.Column('id', sa.Uuid(), nullable=False),
-    sa.ForeignKeyConstraint(['currency_id'], ['currency.id'], ),
     sa.ForeignKeyConstraint(['user_id'], ['user.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
-    op.create_index(op.f('ix_financial_goal_currency_id'), 'financial_goal', ['currency_id'], unique=False)
     op.create_index(op.f('ix_financial_goal_deadline'), 'financial_goal', ['deadline'], unique=False)
     op.create_index(op.f('ix_financial_goal_goal_type'), 'financial_goal', ['goal_type'], unique=False)
     op.create_index(op.f('ix_financial_goal_id'), 'financial_goal', ['id'], unique=False)
@@ -282,7 +278,6 @@ def downgrade():
     op.drop_index(op.f('ix_financial_goal_id'), table_name='financial_goal')
     op.drop_index(op.f('ix_financial_goal_goal_type'), table_name='financial_goal')
     op.drop_index(op.f('ix_financial_goal_deadline'), table_name='financial_goal')
-    op.drop_index(op.f('ix_financial_goal_currency_id'), table_name='financial_goal')
     op.drop_table('financial_goal')
     op.drop_index(op.f('ix_budget_user_id'), table_name='budget')
     op.drop_index(op.f('ix_budget_name'), table_name='budget')

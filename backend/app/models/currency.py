@@ -44,7 +44,6 @@ class Currency(CurrencyBase, table=True):
     # Relationships (one currency can be used by many entities)
     users: List["User"] = Relationship(back_populates="default_currency", sa_relationship_kwargs={"lazy": "selectin"})
     transactions: List["Transaction"] = Relationship(back_populates="currency", sa_relationship_kwargs={"lazy": "selectin"})
-    financial_goals: List["FinancialGoal"] = Relationship(back_populates="currency", sa_relationship_kwargs={"lazy": "selectin"})
     subscriptions: List["Subscription"] = Relationship(back_populates="currency", sa_relationship_kwargs={"lazy": "selectin"})
     debts: List["Debt"] = Relationship(back_populates="currency", sa_relationship_kwargs={"lazy": "selectin"})
     accounts: List["Account"] = Relationship(back_populates="currency", sa_relationship_kwargs={"lazy": "selectin"})
@@ -53,7 +52,6 @@ class Currency(CurrencyBase, table=True):
         super().__init__(**data)
         self.users = []
         self.transactions = []
-        self.financial_goals = []
         self.subscriptions = []
         self.debts = []
         self.accounts = []

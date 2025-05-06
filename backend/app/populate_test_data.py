@@ -420,28 +420,22 @@ def create_test_financial_goals(session: Session) -> None:
             "description": "Trip to Hawaii", 
             "target_amount": 5000.00,
             "current_amount": 2000.00,
-            "target_date": datetime.date.today() + datetime.timedelta(days=180),
-            "currency_code": "USD"
+            "target_date": datetime.date.today() + datetime.timedelta(days=180)
         },
         {
             "name": "Home Down Payment", 
             "description": "20% down payment for house", 
             "target_amount": 50000.00,
             "current_amount": 15000.00,
-            "target_date": datetime.date.today() + datetime.timedelta(days=730),
-            "currency_code": "USD"
+            "target_date": datetime.date.today() + datetime.timedelta(days=730)
         },
     ]
     
     for goal_data in goals:
-        currency_code = goal_data.pop("currency_code")
-        currency_id = created_ids["currencies"][currency_code]
-        
         # Create goal for each user
         for email, user_id in created_ids["users"].items():
             goal = FinancialGoalCreate(
-                **goal_data,
-                currency_id=currency_id
+                **goal_data
             )
             
             db_goal = financial_goal_crud.create_financial_goal(
