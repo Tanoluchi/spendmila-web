@@ -3,7 +3,7 @@ import { CreditCard, ArrowUpDown, AlertCircle, Edit, Trash2 } from 'lucide-react
 import { formatCurrency } from '@/utils/formatters';
 import type { AccountCardProps } from '@/types/account';
 import TransactionCount from './TransactionCount';
-import AccountService from '@/services/accountService';
+import { AccountService } from '@/client';
 
 /**
  * Componente para mostrar una tarjeta de cuenta individual

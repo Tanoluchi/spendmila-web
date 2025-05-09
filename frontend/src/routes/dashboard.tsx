@@ -109,7 +109,7 @@ function Dashboard () {
                         </Link>
                     </SidebarMenuItem>
                     
-                    <SidebarMenuItem>
+                    {/* <SidebarMenuItem>
                         <Link to="/dashboard/charts">
                             <SidebarMenuButton
                             isActive={matchRoute({ to: "/dashboard/charts" })}
@@ -118,7 +118,7 @@ function Dashboard () {
                             <span className='dark:text-gray-200'>Charts</span>
                             </SidebarMenuButton>
                         </Link>
-                    </SidebarMenuItem>
+                    </SidebarMenuItem> */}
                     
                     <SidebarMenuItem>
                         <Link to="/dashboard/subscriptions">
@@ -136,7 +136,7 @@ function Dashboard () {
                 
                 <SidebarSeparator />
                 
-                <SidebarGroup>
+                {/* <SidebarGroup>
                 <SidebarGroupContent>
                     <SidebarMenu>
                     <SidebarMenuItem>
@@ -162,7 +162,7 @@ function Dashboard () {
                     </SidebarMenuItem>
                     </SidebarMenu>
                 </SidebarGroupContent>
-                </SidebarGroup>
+                </SidebarGroup> */}
                 
                 <SidebarSeparator />
                 

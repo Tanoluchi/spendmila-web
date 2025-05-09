@@ -13,7 +13,8 @@ from app.api.routes import (
     subscriptions,
     debts,
     accounts,
-    budgets
+    budgets,
+    file_upload
 )
 from app.core.config import settings
 
@@ -30,6 +31,7 @@ api_router.include_router(subscriptions.router)
 api_router.include_router(debts.router)
 api_router.include_router(accounts.router)
 api_router.include_router(budgets.router, prefix="/budgets", tags=["budgets"])
+api_router.include_router(file_upload.router)
 
 
 if settings.ENVIRONMENT == "local":

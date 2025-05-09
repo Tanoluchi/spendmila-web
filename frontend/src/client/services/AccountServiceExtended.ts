@@ -1,24 +1,27 @@
-import { AccountService as ApiAccountService } from '@/client/services/AccountService';
+import type { CancelablePromise } from "../core/CancelablePromise";
+import { OpenAPI } from "../core/OpenAPI";
+import { request as __request } from "../core/request";
+import { AccountService } from "./AccountService";
+import { QueryClient } from '@tanstack/react-query';
 import { 
   Account, 
   AccountWithDetails, 
   AccountSummary,
   TransactionCountOptions
 } from '@/types/account';
-import { QueryClient } from '@tanstack/react-query';
 
 /**
- * Servicio para manejar la lógica de negocio relacionada con cuentas.
- * Separa la lógica de datos de los componentes de UI.
+ * Servicio extendido para manejar la lógica de negocio relacionada con cuentas.
+ * Combina la funcionalidad de la API base con métodos de utilidad adicionales.
  */
-export class AccountService {
+export class AccountServiceExtended {
   /**
    * Obtiene todas las cuentas del usuario actual.
    * @returns Promise con el array de cuentas
    */
   static async getAccounts(): Promise<Account[]> {
     try {
-      return await ApiAccountService.getAccounts();
+      return await AccountService.getAccounts();
     } catch (error) {
       console.error('Error fetching accounts:', error);
       throw error;
@@ -32,7 +35,7 @@ export class AccountService {
    */
   static async getAccountDetails(accountId: string): Promise<AccountWithDetails> {
     try {
-      return await ApiAccountService.getAccount(accountId) as AccountWithDetails;
+      return await AccountService.getAccount(accountId) as AccountWithDetails;
     } catch (error) {
       console.error(`Error fetching account details for ${accountId}:`, error);
       throw error;
@@ -168,5 +171,3 @@ export class AccountService {
     return account.account_type === 'credit' || account.balance < 0;
   }
 }
-
-export default AccountService;
