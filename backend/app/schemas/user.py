@@ -17,7 +17,9 @@ class UserBase(SQLModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     
     email: EmailStr = Field(max_length=255)
-    full_name: Optional[str] = Field(default=None, max_length=255)
+    first_name: str = Field(max_length=255)
+    last_name: str = Field(max_length=255)
+    profile_picture: Optional[str] = Field(default=None)
     is_active: bool = True
     is_superuser: bool = False
     subscription_type: SubscriptionType = Field(default=SubscriptionType.FREE)
@@ -27,7 +29,7 @@ class UserBase(SQLModel):
 class UserRead(UserBase):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     id: uuid.UUID
-    default_currency: CurrencyRead = None
+    default_currency: CurrencyRead
 
 
 class UserCreate(UserBase):
@@ -39,14 +41,17 @@ class UserRegister(SQLModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     email: EmailStr = Field(max_length=255)
     password: str = Field(min_length=8, max_length=40)
-    full_name: Optional[str] = Field(default=None, max_length=255)
+    first_name: str = Field(max_length=255)
+    last_name: str = Field(max_length=255)
 
 
 class UserUpdate(SQLModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
-    email: Optional[EmailStr] = Field(default=None, max_length=255)
+    email: EmailStr = Field(max_length=255)
     password: Optional[str] = Field(default=None, min_length=8, max_length=40)
-    full_name: Optional[str] = Field(default=None, max_length=255)
+    first_name: Optional[str] = Field(default=None, max_length=255)
+    last_name: Optional[str] = Field(default=None, max_length=255)
+    profile_picture: Optional[str] = Field(default=None)
     is_active: Optional[bool] = None
     is_superuser: Optional[bool] = None
     default_currency_id: Optional[uuid.UUID] = None
@@ -54,8 +59,10 @@ class UserUpdate(SQLModel):
 
 class UserUpdateMe(SQLModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
-    email: Optional[EmailStr] = Field(default=None, max_length=255)
-    full_name: Optional[str] = Field(default=None, max_length=255)
+    email: EmailStr = Field(max_length=255)
+    first_name: Optional[str] = Field(default=None, max_length=255)
+    last_name: Optional[str] = Field(default=None, max_length=255)
+    profile_picture: Optional[str] = Field(default=None)
     password: Optional[str] = Field(default=None, min_length=8, max_length=40)
     default_currency_id: Optional[uuid.UUID] = None
 
@@ -83,6 +90,7 @@ class UserReadWithDetails(UserRead):
 class Message(SQLModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     message: str
+    data: Optional[dict] = None
 
 
 class Token(SQLModel):
@@ -105,4 +113,4 @@ class UpdatePassword(SQLModel):
 class NewPassword(SQLModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     token: str
-    new_password: str = Field(min_length=8, max_length=40) 
+    new_password: str = Field(min_length=8, max_length=40)

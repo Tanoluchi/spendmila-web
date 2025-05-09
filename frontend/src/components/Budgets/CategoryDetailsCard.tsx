@@ -1,7 +1,7 @@
 import React from 'react';
 import { CategoryDetailsProps, BudgetCategory } from '@/types/budget';
 import { formatCurrency } from '@/utils/formatters';
-import BudgetService from '@/services/budgetService';
+import { BudgetService } from '@/client';
 
 /**
  * Componente para mostrar los detalles de cada categoría de presupuesto

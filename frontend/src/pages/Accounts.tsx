@@ -11,7 +11,7 @@ import AccountCard from '@/components/Accounts/AccountCard';
 
 // Hooks y Servicios
 import { useAccounts } from '@/hooks/useAccounts';
-import AccountService from '@/services/accountService';
+import { AccountService } from '@/client';
 
 // Tipos
 import { Account, AccountTypeDisplayNames } from '@/types/account';

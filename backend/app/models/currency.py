@@ -30,6 +30,7 @@ class CurrencyBase(SQLModel):
     code: CurrencyCode = Field(index=True, unique=True)
     symbol: str = Field(max_length=5)
     name: str = Field(index=True, max_length=50)
+    is_default: bool = Field(default=False, nullable=False)
     created_at: datetime.datetime = Field(default_factory=datetime.datetime.now)
     updated_at: datetime.datetime = Field(default_factory=datetime.datetime.now)
 

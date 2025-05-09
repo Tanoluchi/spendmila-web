@@ -1,6 +1,6 @@
 import React from 'react';
 import { Budget } from '@/types/budget';
-import BudgetService from '@/services/budgetService';
+import { BudgetService } from '@/client';
 
 interface BudgetInsightsCardProps {
   budget: Budget;

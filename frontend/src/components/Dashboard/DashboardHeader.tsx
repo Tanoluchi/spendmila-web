@@ -13,7 +13,7 @@ const DashboardHeader = ({ currentUser }: { currentUser: UserPublic | null }) =>
   const navigate = useNavigate();
   
   // Check if the current route is the Transactions page
-  const isTransactionsPage = matchRoute({ to: "/dashboard/transactions" });
+  const isDashboardPage = matchRoute({ to: "/dashboard" });
   
   return (
     <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
@@ -26,21 +26,13 @@ const DashboardHeader = ({ currentUser }: { currentUser: UserPublic | null }) =>
       </div>
       <div className="flex mt-4 md:mt-0 gap-4 items-center">
         <ThemeToggle />
-        {isTransactionsPage ? (
+        {!isDashboardPage && (
           <button 
             className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-md inline-flex items-center gap-2 shadow-md"
             onClick={() => navigate({ to: "/dashboard" })}
           >
             <ArrowLeft size={16} />
             Back to Dashboard
-          </button>
-        ) : (
-          <button 
-            className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-md inline-flex items-center gap-2 shadow-md"
-            onClick={() => setIsModalOpen(true)}
-          >
-            <Plus size={16} />
-            Add Transaction
           </button>
         )}
         <AddTransaction isOpen={isModalOpen} onOpenChange={setIsModalOpen} />

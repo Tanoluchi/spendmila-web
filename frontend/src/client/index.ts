@@ -7,3 +7,10 @@ export * from "./types.gen"
 // Custom services
 export { SubscriptionService } from "./services/SubscriptionService"
 export type { Subscription, SubscriptionsResponse, CreateSubscriptionRequest } from "./services/SubscriptionService"
+// Servicio de carga de archivos
+export { FileUploadService } from "./services/FileUploadService"
+export type { UploadResponse } from "./services/FileUploadService"
+// Servicios extendidos
+export { AccountServiceExtended as AccountService } from "./services/AccountServiceExtended"
+export { BudgetServiceExtended as BudgetService } from "./services/BudgetServiceExtended"
+export { UsersServiceExtended as UsersService } from "./services/UsersServiceExtended"

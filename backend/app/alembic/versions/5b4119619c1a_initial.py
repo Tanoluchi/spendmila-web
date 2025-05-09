@@ -1,8 +1,8 @@
 """Initial
 
-Revision ID: c8775261550f
+Revision ID: 5b4119619c1a
 Revises: 
-Create Date: 2025-05-06 20:32:10.313435
+Create Date: 2025-05-09 10:48:45.721074
 
 """
 from alembic import op
@@ -11,7 +11,7 @@ import sqlmodel.sql.sqltypes
 
 
 # revision identifiers, used by Alembic.
-revision = 'c8775261550f'
+revision = '5b4119619c1a'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -58,7 +58,11 @@ def upgrade():
     op.create_index(op.f('ix_payment_method_name'), 'payment_method', ['name'], unique=True)
     op.create_table('user',
     sa.Column('email', sqlmodel.sql.sqltypes.AutoString(length=255), nullable=False),
-    sa.Column('full_name', sqlmodel.sql.sqltypes.AutoString(length=255), nullable=True),
+    sa.Column('first_name', sqlmodel.sql.sqltypes.AutoString(length=255), nullable=False),
+    sa.Column('last_name', sqlmodel.sql.sqltypes.AutoString(length=255), nullable=False),
+    sa.Column('profile_picture', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
+    sa.Column('created_at', sa.DateTime(), nullable=False),
+    sa.Column('updated_at', sa.DateTime(), nullable=False),
     sa.Column('is_active', sa.Boolean(), nullable=False),
     sa.Column('is_superuser', sa.Boolean(), nullable=False),
     sa.Column('subscription_type', sa.Enum('FREE', 'BASIC', 'PRO', name='subscriptiontype'), nullable=False),

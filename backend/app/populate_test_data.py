@@ -15,6 +15,7 @@ from app.models.subscription import Subscription
 from app.models.payment_method import PaymentMethod
 from app.models.category import Category
 from app.models.budget import Budget
+from app.models.account import Account
 from app.schemas.user import UserCreate
 from app.schemas.currency import CurrencyCreate
 from app.schemas.category import CategoryCreate
@@ -204,38 +205,56 @@ def create_test_users(session: Session) -> None:
         logger.error("USD currency not found. Make sure to run create_test_currencies first.")
         return
     
-    users = [
+    # Ensure EUR currency exists for the second user, or default to USD
+    eur_currency_id = created_ids["currencies"].get("EUR", usd_currency_id)
+
+    users_data = [
         {
             "email": "john.doe@example.com", 
             "password": "password123", 
-            "full_name": "John Doe",
-            "default_currency_id": created_ids["currencies"]["USD"]
+            "first_name": "John",
+            "last_name": "Doe",
+            "profile_picture": None, # Or a placeholder URL string
+            "default_currency_id": usd_currency_id
         },
         {
             "email": "jane.smith@example.com", 
             "password": "password123", 
-            "full_name": "Jane Smith",
-            "default_currency_id": created_ids["currencies"]["EUR"]
+            "first_name": "Jane",
+            "last_name": "Smith",
+            "profile_picture": None, # Or a placeholder URL string
+            "default_currency_id": eur_currency_id
         },
     ]
     
-    for user_data in users:
-        # Check if user already exists
-        existing = crud.get_user_by_email(session=session, email=user_data["email"])
-        if existing:
-            created_ids["users"][user_data["email"]] = existing.id
-            # Update default currency if it's not set
-            if not existing.default_currency_id:
-                existing.default_currency_id = user_data["default_currency_id"]
-                session.add(existing)
-                session.commit()
-            continue
-            
-        user = UserCreate(**user_data)
-        db_user = crud.create_user(session=session, user_create=user)
-        created_ids["users"][user_data["email"]] = db_user.id
+    for data in users_data:
+        try:
+            user_in = UserCreate(**data)
+            user = crud.user.create_user(session=session, user_create=user_in)
+            created_ids["users"][user.email] = user.id
+            logger.info(f"Created user: {user.email}, Default Currency ID: {user.default_currency_id}")
+
+            # After user creation, their default 'Cash' account is also created.
+            # We need to find it and add it to created_ids['accounts']
+            # so that transactions can be created for it, especially for the superuser.
+            default_account_stmt = select(Account).where(
+                Account.user_id == user.id,
+                Account.is_default == True,
+                Account.name == "Cash"  # Assuming the default is named 'Cash'
+            )
+            default_account = session.exec(default_account_stmt).first()
+
+            if default_account:
+                account_key = f"{user.email}_Cash" # Use a consistent key, e.g., email_Cash
+                created_ids["accounts"][account_key] = default_account.id
+                logger.info(f"Stored auto-created 'Cash' account ID {default_account.id} for user {user.email}")
+            else:
+                logger.warning(f"Auto-created 'Cash' account not found for user {user.email}. This might lead to issues in transaction creation.")
+
+        except Exception as e:
+            logger.error(f"Error creating user {data['email']}: {str(e)}")
         
-    logger.info(f"Created {len(users)} users")
+    logger.info(f"Created {len(users_data)} users")
 
 
 def create_test_payment_methods(session: Session) -> None:
@@ -281,56 +300,81 @@ def create_test_accounts(session: Session) -> None:
     """Create test accounts."""
     logger.info("Creating test accounts...")
     
-    # Definir fechas de creación variadas para las cuentas (últimos 18 meses) para datos más realistas
-    today = datetime.datetime.now()
-    creation_dates = [
-        today - datetime.timedelta(days=547),  # ~18 meses atrás
-        today - datetime.timedelta(days=365),  # ~12 meses atrás
-        today - datetime.timedelta(days=182),  # ~6 meses atrás
-        today - datetime.timedelta(days=90),   # ~3 meses atrás
+    accounts_data = [
+        # {
+        #     "name": "Cash", # This is now auto-created by crud.user.create_user
+        #     "account_type": "cash",
+        #     "currency_code": "USD", # Will use user's default currency
+        #     "is_default": True 
+        # },
+        {
+            "name": "Bank Account", 
+            "account_type": "bank", 
+            "currency_code": "USD",
+            "is_default": False # Auto-created 'Cash' account is the default
+        },
+        {
+            "name": "Savings Account", 
+            "account_type": "savings", 
+            "currency_code": "EUR",
+            "is_default": False
+        },
+        {
+            "name": "Credit Card", 
+            "account_type": "credit", 
+            "currency_code": "ARS",
+            "is_default": False
+        },
+        {
+            "name": "Investment Account",
+            "account_type": "investment",
+            "currency_code": "USD",
+            "is_default": False
+        }
     ]
-    
-    accounts = [
-        {"name": "Checking Account", "description": "Primary checking", "balance": 2500.00, "currency_code": "USD", "account_type": "bank", "created_at": creation_dates[0]},
-        {"name": "Savings Account", "description": "Emergency fund", "balance": 10000.00, "currency_code": "USD", "account_type": "bank", "created_at": creation_dates[1]},
-        {"name": "Investment Account", "description": "Stocks and bonds", "balance": 15000.00, "currency_code": "USD", "account_type": "other", "created_at": creation_dates[2]},
-        {"name": "Euro Account", "description": "Euro savings", "balance": 5000.00, "currency_code": "EUR", "account_type": "bank", "created_at": creation_dates[3]},
-    ]
-    
-    for account_data in accounts:
-        currency_code = account_data.pop("currency_code")
-        currency_id = created_ids["currencies"][currency_code]
-        creation_date = account_data.pop("created_at")
+
+    for email, user_id in created_ids["users"].items():
+        if email == settings.FIRST_SUPERUSER:
+            continue
+
+        user = crud.user.get_user_by_email(session=session, email=email)
+        if not user:
+            logger.warning(f"User {email} not found. Skipping account creation.")
+            continue
         
-        # Create account for each user
-        for i, (email, user_id) in enumerate(created_ids["users"].items()):
-            # Agregar una pequeña variación a la fecha de creación para cada usuario
-            user_creation_date = creation_date + datetime.timedelta(days=i)
-            
-            account = AccountCreate(
-                **account_data,
+        # The default 'Cash' account is already created by create_user.
+        # We only create additional accounts here.
+
+        for acc_data in accounts_data:
+            # Ensure currency for this account exists in our created_ids
+            # User's default currency might be different from account's currency here for testing purposes
+            currency_id = created_ids["currencies"].get(acc_data["currency_code"])
+            if not currency_id:
+                logger.warning(f"Currency {acc_data['currency_code']} not found for account {acc_data['name']}. Skipping for user {email}.")
+                continue
+
+            # If this additional account were to be set as default, we would need to unset previous ones.
+            # However, since 'Cash' is the default, these should all be False.
+            # if acc_data.get("is_default", False):
+            #     account_crud.unset_default_accounts(db=session, user_id=user_id)
+
+            account_in = AccountCreate(
+                name=acc_data["name"],
+                account_type=acc_data["account_type"],
                 currency_id=currency_id,
-                user_id=user_id
+                institution=f"{acc_data['name']} Corp", # Example institution
+                is_default=acc_data.get("is_default", False)
             )
-            
-            # Crear la cuenta
-            db_account = account_crud.create_account(
-                db=session, 
-                account=account,
-                user_id=user_id
-            )
-            
-            # Establecer explícitamente la fecha de creación
-            db_account.created_at = user_creation_date
-            session.add(db_account)
-            session.commit()
-            
-            # Store with composite key for reference
-            key = f"{email}:{account_data['name']}"
-            created_ids["accounts"][key] = db_account.id
-            logger.info(f"Created account {account_data['name']} for {email} with creation date {user_creation_date}")
-        
-    logger.info(f"Created accounts for {len(created_ids['users'])} users")
+            try:
+                # Use the specific account_crud.create_account from crud.account
+                created_account = account_crud.create_account(
+                    db=session, account=account_in, user_id=user_id
+                )
+                created_ids["accounts"][f"{email}_{acc_data['name']}"] = created_account.id
+                logger.info(f"Created account: {created_account.name} for user {email}")
+            except Exception as e:
+                logger.error(f"Error creating account {acc_data['name']} for {email}: {str(e)}")
+    logger.info("Finished creating test accounts.")
 
 
 def create_test_debts(session: Session) -> None:
@@ -586,237 +630,147 @@ def create_test_transactions(session: Session) -> None:
     """Create test transactions."""
     logger.info("Creating test transactions...")
     
-    # Primero generamos las transacciones asociadas a deudas
+    import random  # ADDED
+    
+    # First, generate debt-related transactions
     create_debt_transactions(session)
-    
-    # Create transactions for the past 3 months
-    today = datetime.date.today()
-    start_date = today.replace(day=1) - datetime.timedelta(days=90)
-    
-    # Budget to category mapping to associate transactions with appropriate budgets
-    budget_category_mapping = {
-        "Gastos Mensuales": ["Housing", "Utilities"],
-        "Transporte": ["Transportation"],
-        "Alimentación": ["Food"],
-        "Servicios": ["Utilities"],
-        "Entretenimiento": ["Entertainment"],
-        "Salud": ["Healthcare"],
-        "Personal": ["Shopping", "Personal Care"],
-        "Educación": ["Education"],
-        "Ahorros": []  # Savings typically don't have expense categories
-    }
-    
-    # Transaction templates
-    transaction_templates = [
-        # Income transactions
-        {
-            "description": "Salary",
-            "amount": 3500.00,
-            "transaction_type": TransactionType.INCOME,
-            "category_name": "Income",
-        },
-        {
-            "description": "Freelance Work",
-            "amount": 500.00,
-            "transaction_type": TransactionType.INCOME,
-            "category_name": "Income",
-        },
+    logger.info("Created debt-related transactions successfully")
+
+    # Create a variety of other transactions for each user
+    logger.info("Starting creation of other (non-debt) transactions...") 
+    for user_email, user_id in created_ids["users"].items():
+        logger.info(f"---> Processing user: {user_email} for general transactions.") 
+        user_accounts = [
+            key for key in created_ids["accounts"] if key.startswith(user_email)
+        ]
+        logger.info(f"For user {user_email}, initial account keys found in created_ids: {user_accounts}") 
+
+        if not user_accounts:
+            logger.warning(f"User {user_email} has NO accounts in created_ids for general transactions. Skipping this user.") 
+            continue
+
+        user = crud.user.get_user_by_id(session=session, user_id=user_id)
         
-        # Expense transactions
-        {
-            "description": "Rent",
-            "amount": 1200.00,
-            "transaction_type": TransactionType.EXPENSE,
-            "category_name": "Housing",
-        },
-        {
-            "description": "Groceries",
-            "amount": 150.00,
-            "transaction_type": TransactionType.EXPENSE,
-            "category_name": "Food",
-        },
-        {
-            "description": "Electricity Bill",
-            "amount": 85.00,
-            "transaction_type": TransactionType.EXPENSE,
-            "category_name": "Utilities",
-        },
-        {
-            "description": "Internet Bill",
-            "amount": 60.00,
-            "transaction_type": TransactionType.EXPENSE,
-            "category_name": "Utilities",
-        },
-        {
-            "description": "Restaurant",
-            "amount": 45.00,
-            "transaction_type": TransactionType.EXPENSE,
-            "category_name": "Food",
-        },
-        {
-            "description": "Gas",
-            "amount": 40.00,
-            "transaction_type": TransactionType.EXPENSE,
-            "category_name": "Transportation",
-        },
-        {
-            "description": "Movie Tickets",
-            "amount": 30.00,
-            "transaction_type": TransactionType.EXPENSE,
-            "category_name": "Entertainment",
-        },
-        {
-            "description": "Pharmacy",
-            "amount": 25.00,
-            "transaction_type": TransactionType.EXPENSE,
-            "category_name": "Healthcare",
-        },
-    ]
-    
-    # Create transactions for each user
-    for email, user_id in created_ids["users"].items():
-        # Get user's accounts 
-        user_accounts = [key for key in created_ids["accounts"] if key.startswith(f"{email}:")]
-        # Payment methods are now global, not user-specific
+        # Budget to category mapping to associate transactions with appropriate budgets
+        budget_category_mapping = {
+            "Gastos Mensuales": ["Housing", "Utilities"],
+            "Transporte": ["Transportation"],
+            "Alimentación": ["Food"],
+            "Servicios": ["Utilities"],
+            "Entretenimiento": ["Entertainment"],
+            "Salud": ["Healthcare"],
+            "Personal": ["Shopping", "Personal Care"],
+            "Educación": ["Education"],
+            "Ahorros": []  # Savings typically don't have expense categories
+        }
         
-        # Generate transactions for the past 3 months
-        current_date = start_date
-        transaction_count = 0
+        # Transaction templates
+        transaction_templates = [
+            # Income transactions
+            {
+                "description": "Salary",
+                "amount": 3500.00,
+                "transaction_type": TransactionType.INCOME,
+                "category_name": "Income",
+            },
+            {
+                "description": "Freelance Work",
+                "amount": 500.00,
+                "transaction_type": TransactionType.INCOME,
+                "category_name": "Income",
+            },
+            
+            # Expense transactions
+            {
+                "description": "Rent",
+                "amount": 1200.00,
+                "transaction_type": TransactionType.EXPENSE,
+                "category_name": "Housing",
+            },
+            {
+                "description": "Groceries",
+                "amount": 150.00,
+                "transaction_type": TransactionType.EXPENSE,
+                "category_name": "Food",
+            },
+            {
+                "description": "Electricity Bill",
+                "amount": 85.00,
+                "transaction_type": TransactionType.EXPENSE,
+                "category_name": "Utilities",
+            },
+            {
+                "description": "Internet Bill",
+                "amount": 60.00,
+                "transaction_type": TransactionType.EXPENSE,
+                "category_name": "Utilities",
+            },
+            {
+                "description": "Restaurant",
+                "amount": 45.00,
+                "transaction_type": TransactionType.EXPENSE,
+                "category_name": "Food",
+            },
+            {
+                "description": "Gas",
+                "amount": 40.00,
+                "transaction_type": TransactionType.EXPENSE,
+                "category_name": "Transportation",
+            },
+            {
+                "description": "Movie Tickets",
+                "amount": 30.00,
+                "transaction_type": TransactionType.EXPENSE,
+                "category_name": "Entertainment",
+            },
+            {
+                "description": "Pharmacy",
+                "amount": 25.00,
+                "transaction_type": TransactionType.EXPENSE,
+                "category_name": "Healthcare",
+            },
+        ]
         
-        while current_date <= today:
-            # Monthly income (salary) - first day of month
-            if current_date.day == 1:
-                income_template = transaction_templates[0]  # Salary
-                account_key = f"{email}:Checking Account"
-                payment_method_key = "Bank Transfer"
-                
-                transaction = TransactionCreate(
-                    description=income_template["description"],
-                    amount=income_template["amount"],
-                    transaction_type=income_template["transaction_type"],
-                    date=current_date,
-                    currency_id=created_ids["currencies"]["USD"],
-                    category_id=created_ids["categories"][income_template["category_name"]],
-                    account_id=created_ids["accounts"].get(account_key),
-                    payment_method_id=created_ids["payment_methods"].get(payment_method_key)
-                )
-                
-                transaction_crud.create_transaction(
-                    session=session,
-                    transaction_in=transaction,
-                    user_id=user_id
-                )
-                transaction_count += 1
+        # Create transactions for each user
+        logger.info(f"Proceeding to create general transactions for {user_email}. Account list: {user_accounts}") 
+        for i in range(random.randint(50, 150)):  # Create 50-150 transactions per user
+            logger.debug(f"User {user_email}, transaction iteration {i+1}. Accounts available: {user_accounts}") 
+            if not user_accounts: # Defensive check
+                logger.error(f"CRITICAL ERROR: For user {user_email}, user_accounts list became empty unexpectedly inside the transaction creation loop. Accounts were: {user_accounts}. Breaking transaction creation for this user.")
+                break
+            account_key = random.choice(user_accounts)
+            account_id = created_ids["accounts"][account_key]
             
-            # Rent payment - fifth day of month
-            if current_date.day == 5:
-                rent_template = transaction_templates[2]  # Rent
-                account_key = f"{email}:Checking Account"
-                payment_method_key = "Bank Transfer"
-                
-                transaction = TransactionCreate(
-                    description=rent_template["description"],
-                    amount=rent_template["amount"],
-                    transaction_type=rent_template["transaction_type"],
-                    date=current_date,
-                    currency_id=created_ids["currencies"]["USD"],
-                    category_id=created_ids["categories"].get(rent_template["category_name"]),
-                    account_id=created_ids["accounts"].get(account_key),
-                    payment_method_id=created_ids["payment_methods"].get(payment_method_key)
-                )
-                
-                transaction_crud.create_transaction(
-                    session=session,
-                    transaction_in=transaction,
-                    user_id=user_id
-                )
-                transaction_count += 1
+            # Pick a random transaction template from the expense ones (indices 2-9)
+            import random
+            template_idx = random.randint(6, 9)
+            template = transaction_templates[template_idx]
             
-            # Weekly groceries (every 7 days)
-            if current_date.weekday() == 5:  # Saturday
-                grocery_template = transaction_templates[3]  # Groceries
-                account_key = f"{email}:Checking Account"
-                payment_method_key = "Debit Card"
-                
-                transaction = TransactionCreate(
-                    description=grocery_template["description"],
-                    amount=grocery_template["amount"],
-                    transaction_type=grocery_template["transaction_type"],
-                    date=current_date,
-                    currency_id=created_ids["currencies"]["USD"],
-                    category_id=created_ids["categories"][grocery_template["category_name"]],
-                    account_id=created_ids["accounts"].get(account_key),
-                    payment_method_id=created_ids["payment_methods"].get(payment_method_key)
-                )
-                
-                transaction_crud.create_transaction(
-                    session=session,
-                    transaction_in=transaction,
-                    user_id=user_id
-                )
-                transaction_count += 1
+            # Randomize amount slightly
+            amount = template["amount"] * (0.8 + random.random() * 0.4)  # 80% to 120% of original
             
-            # Monthly bills (15th of month)
-            if current_date.day == 15:
-                for bill_template in [transaction_templates[4], transaction_templates[5]]:  # Electricity & Internet
-                    account_key = f"{email}:Checking Account"
-                    payment_method_key = "Credit Card"
-                    
-                    transaction = TransactionCreate(
-                        description=bill_template["description"],
-                        amount=bill_template["amount"],
-                        transaction_type=bill_template["transaction_type"],
-                        date=current_date,
-                        currency_id=created_ids["currencies"]["USD"],
-                        category_id=created_ids["categories"][bill_template["category_name"]],
-                        account_id=created_ids["accounts"].get(account_key),
-                        payment_method_id=created_ids["payment_methods"].get(payment_method_key)
-                    )
-                    
-                    transaction_crud.create_transaction(
-                        session=session,
-                        transaction_in=transaction,
-                        user_id=user_id
-                    )
-                    transaction_count += 1
+            # Pick random account and payment method
+            payment_method_keys = list(created_ids["payment_methods"].keys())
+            payment_method_key = random.choice(payment_method_keys)
             
-            # Random transactions (with some randomness)
-            if current_date.day % 3 == 0:
-                # Pick a random transaction template from the expense ones (indices 2-9)
-                import random
-                template_idx = random.randint(6, 9)
-                template = transaction_templates[template_idx]
-                
-                # Randomize amount slightly
-                amount = template["amount"] * (0.8 + random.random() * 0.4)  # 80% to 120% of original
-                
-                # Pick random account and payment method
-                account_key = random.choice(user_accounts)
-                payment_method_keys = list(created_ids["payment_methods"].keys())
-                payment_method_key = random.choice(payment_method_keys)
-                
-                transaction = TransactionCreate(
-                    description=template["description"],
-                    amount=round(amount, 2),
-                    transaction_type=template["transaction_type"],
-                    date=current_date,
-                    currency_id=created_ids["currencies"]["USD"],
-                    category_id=created_ids["categories"].get(template["category_name"]),
-                    account_id=created_ids["accounts"].get(account_key),
-                    payment_method_id=created_ids["payment_methods"].get(payment_method_key)
-                )
-                
-                transaction_crud.create_transaction(
-                    session=session,
-                    transaction_in=transaction,
-                    user_id=user_id
-                )
-                transaction_count += 1
+            transaction = TransactionCreate(
+                description=template["description"],
+                amount=round(amount, 2),
+                transaction_type=template["transaction_type"],
+                date=datetime.date.today() - datetime.timedelta(days=random.randint(1, 90)),
+                currency_id=created_ids["currencies"]["USD"],
+                category_id=created_ids["categories"].get(template["category_name"]),
+                account_id=account_id,
+                payment_method_id=created_ids["payment_methods"].get(payment_method_key)
+            )
             
-            # Move to next day
-            current_date += datetime.timedelta(days=1)
+            transaction_crud.create_transaction(
+                session=session,
+                transaction_in=transaction,
+                user_id=user_id
+            )
         
-        logger.info(f"Created {transaction_count} transactions for user {email}")
+        logger.info(f"Created {i+1} transactions for user {user_email}")
 
 
 def create_test_budgets(session: Session) -> None:
@@ -905,11 +859,51 @@ def populate_test_data(force: bool = False) -> None:
     if not force and not is_development_environment():
         logger.warning("Not in development environment. Skipping test data population.")
         return
-    
+
+    global created_ids  # Declare intention to modify the global dictionary
+    created_ids = {     # Reset the dictionary to a clean state
+        "users": {},
+        "currencies": {},
+        "categories": {},
+        "payment_methods": {},
+        "accounts": {},
+        "debts": {},
+        "financial_goals": {},
+        "subscriptions": {},
+        "budgets": {},
+    }
+    logger.info("Re-initialized in-memory created_ids cache.")
+
     logger.info("Starting test data population...")
     
     with Session(engine) as session:
-        # Always clear existing data first
+        # Ensure the superuser and their auto-created Cash account are in created_ids
+        # The superuser is created by init_db before this script runs.
+        superuser_email = settings.FIRST_SUPERUSER
+        superuser = crud.user.get_user_by_email(session=session, email=superuser_email)
+        
+        if superuser:
+            created_ids["users"][superuser.email] = superuser.id
+            logger.info(f"Found superuser: {superuser.email} (ID: {superuser.id})")
+            
+            # Fetch superuser's default 'Cash' account
+            default_account_stmt = select(Account).where(
+                Account.user_id == superuser.id,
+                Account.is_default == True,
+                Account.name == "Cash" 
+            )
+            superuser_default_account = session.exec(default_account_stmt).first()
+            
+            if superuser_default_account:
+                account_key = f"{superuser.email}_Cash"
+                created_ids["accounts"][account_key] = superuser_default_account.id
+                logger.info(f"Stored superuser's 'Cash' account ID {superuser_default_account.id}")
+            else:
+                logger.warning(f"Superuser '{superuser.email}' exists but their default 'Cash' account was not found. This is unexpected.")
+        else:
+            logger.warning(f"Superuser '{superuser_email}' not found. This is unexpected as init_db should create them.")
+        
+        # Always clear existing data first (this will skip deleting the superuser itself)
         clear_existing_data(session)
         
         # Create new test data

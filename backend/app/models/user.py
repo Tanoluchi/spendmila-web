@@ -3,6 +3,8 @@ from typing import TYPE_CHECKING, List, Optional, ForwardRef
 
 from pydantic import EmailStr, ConfigDict
 from sqlmodel import Field, Relationship, SQLModel
+import datetime
+import uuid
 
 from .enums import SubscriptionType
 
@@ -29,7 +31,11 @@ class UserBase(SQLModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     
     email: EmailStr = Field(unique=True, index=True, max_length=255)
-    full_name: Optional[str] = Field(default=None, max_length=255)
+    first_name: str = Field(max_length=255)
+    last_name: str = Field(max_length=255)
+    profile_picture: Optional[str] = Field(default=None)
+    created_at: datetime.datetime = Field(default_factory=datetime.datetime.now)
+    updated_at: datetime.datetime = Field(default_factory=datetime.datetime.now)
     is_active: bool = True
     is_superuser: bool = False
     subscription_type: SubscriptionType = Field(default=SubscriptionType.FREE)
@@ -47,12 +53,14 @@ class User(UserBase, table=True):
 
     # Relationships
     default_currency: Currency = Relationship(back_populates="users")
-    transactions: List[Transaction] = Relationship(back_populates="user")
-    financial_goals: List[FinancialGoal] = Relationship(back_populates="user")
-    subscriptions: List[Subscription] = Relationship(back_populates="user")
-    debts: List[Debt] = Relationship(back_populates="user")
-    accounts: List[Account] = Relationship(back_populates="user")
-    budgets: List[Budget] = Relationship(back_populates="user")
+    # Agregamos cascade="all, delete-orphan" para asegurar que cuando un usuario es eliminado,
+    # todos sus datos relacionados también sean eliminados
+    transactions: List[Transaction] = Relationship(back_populates="user", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
+    financial_goals: List[FinancialGoal] = Relationship(back_populates="user", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
+    subscriptions: List[Subscription] = Relationship(back_populates="user", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
+    debts: List[Debt] = Relationship(back_populates="user", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
+    accounts: List[Account] = Relationship(back_populates="user", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
+    budgets: List[Budget] = Relationship(back_populates="user", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
     # Eliminada la relación con payment_methods ya que ahora son entidades globales
 
 # Update forward references at the end of the file
