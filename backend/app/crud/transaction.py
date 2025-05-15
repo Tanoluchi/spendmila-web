@@ -140,6 +140,64 @@ def get_transaction_count(
     return count
 
 
+def get_transactions_paginated(
+    *, 
+    session: Session, 
+    user_id: uuid.UUID,
+    page: int = 1,
+    page_size: int = 10,
+    transaction_type: Optional[TransactionType] = None,
+    category_name: Optional[str] = None,
+    account_id: Optional[uuid.UUID] = None
+) -> dict:
+    """
+    Get paginated transactions for a specific user, with optional filtering.
+
+    Args:
+        session: Database session
+        user_id: User ID to filter by
+        page: Current page number (1-indexed)
+        page_size: Number of items per page
+        transaction_type: Optional transaction type filter
+        category_name: Optional category name filter
+        account_id: Optional account ID filter
+
+    Returns:
+        A dictionary containing paginated transaction data.
+    """
+    import math
+
+    skip = (page - 1) * page_size
+
+    items = get_transactions(
+        session=session, 
+        user_id=user_id,
+        transaction_type=transaction_type,
+        category_name=category_name,
+        account_id=account_id,
+        skip=skip, 
+        limit=page_size
+    )
+
+    total_items = get_transaction_count(
+        session=session, 
+        user_id=user_id,
+        transaction_type=transaction_type,
+        category_name=category_name,
+        account_id=account_id
+    )
+
+    total_pages = math.ceil(total_items / page_size) if total_items > 0 else 0
+
+    return {
+        "items": items,
+        "total": total_items,
+        "page": page,
+        "page_size": page_size,
+        "total_pages": total_pages
+    }
+
+
 def create_transaction(
     *, session: Session, transaction_in: TransactionCreate, user_id: uuid.UUID
 ) -> Transaction:

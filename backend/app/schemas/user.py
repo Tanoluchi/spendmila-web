@@ -67,6 +67,14 @@ class UserUpdateMe(SQLModel):
     default_currency_id: Optional[uuid.UUID] = None
 
 
+class UserFinancialSummaryResponse(SQLModel):
+    cumulative_income: float
+    income_change_percentage: float
+    cumulative_expenses: float
+    expense_change_percentage: float
+    currency_code: str
+
+
 class UserPublic(UserBase):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     id: uuid.UUID
