@@ -1,10 +1,10 @@
 import uuid
-from typing import Any
+from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import col, delete, func, select
 
-from app.crud import user
+from app.crud import user as crud_user
 from app.api.deps import (
     CurrentUser,
     SessionDep,
@@ -22,8 +22,16 @@ from app.schemas.user import (
     UsersPublic,
     UserUpdate,
     UserUpdateMe,
+    UserFinancialSummaryResponse,
 )
 from app.utils import generate_new_account_email, send_email
+from app.schemas.transaction import PaginatedTransactionResponse # Added
+from app.crud import transaction as crud_transaction # Added
+from app.models.enums import TransactionType # Added
+from fastapi import Query # Added
+import datetime # Add this
+from app.crud import summary as crud_summary # Add this
+from app.schemas.summary import UserExpenseSummaryResponse # Add this
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -54,14 +62,14 @@ def create_user(*, session: SessionDep, user_in: UserCreate) -> Any:
     """
     Create new user.
     """
-    db_user = user.get_user_by_email(session=session, email=user_in.email)
+    db_user = crud_user.get_user_by_email(session=session, email=user_in.email)
     if db_user:
         raise HTTPException(
             status_code=400,
             detail="The user with this email already exists in the system.",
         )
 
-    db_user = user.create_user(session=session, user_create=user_in)
+    db_user = crud_user.create_user(session=session, user_create=user_in)
     if settings.emails_enabled and user_in.email:
         email_data = generate_new_account_email(
             email_to=user_in.email, username=user_in.email, password=user_in.password
@@ -83,7 +91,7 @@ def update_user_me(
     """
 
     if user_in.email:
-        existing_user = user.get_user_by_email(session=session, email=user_in.email)
+        existing_user = crud_user.get_user_by_email(session=session, email=user_in.email)
         if existing_user and existing_user.id != current_user.id:
             raise HTTPException(
                 status_code=409, detail="User with this email already exists"
@@ -124,6 +132,79 @@ def read_user_me(current_user: CurrentUser) -> Any:
     return current_user
 
 
+@router.get("/me/summary", response_model=UserFinancialSummaryResponse)
+def read_user_financial_summary(
+    current_user: CurrentUser, session: SessionDep
+) -> UserFinancialSummaryResponse:
+    """
+    Retrieve the financial summary for the current user.
+    Includes cumulative income, expenses, and percentage changes.
+    """
+    summary_data_dict = crud_user.get_user_financial_summary(session=session, user=current_user)
+    return UserFinancialSummaryResponse(**summary_data_dict)
+
+
+@router.get("/me/transactions", response_model=PaginatedTransactionResponse)
+async def read_user_transactions(
+    current_user: CurrentUser,
+    session: SessionDep,
+    page: int = Query(1, ge=1, description="Page number, 1-indexed"),
+    page_size: int = Query(10, ge=1, le=100, description="Number of items per page"),
+    transaction_type: Optional[TransactionType] = Query(None, description="Filter by transaction type"),
+    category_name: Optional[str] = Query(None, description="Filter by category name"),
+    account_id: Optional[uuid.UUID] = Query(None, description="Filter by account ID")
+) -> PaginatedTransactionResponse:
+    """
+    Retrieve paginated transactions for the current user.
+    """
+    transactions_data = crud_transaction.get_transactions_paginated(
+        session=session, 
+        user_id=current_user.id, 
+        page=page, 
+        page_size=page_size,
+        transaction_type=transaction_type,
+        category_name=category_name,
+        account_id=account_id
+    )
+    return PaginatedTransactionResponse(**transactions_data)
+
+
+@router.get("/me/expense-summary", response_model=UserExpenseSummaryResponse)
+def read_user_expense_summary(
+    current_user: CurrentUser,
+    session: SessionDep,
+    year: int = Query(None, description="Year for monthly summary. Defaults to current year."),
+    days_for_daily: int = Query(7, ge=1, le=365, description="Number of past days for daily summary (e.g., 7 for weekly view).")
+) -> UserExpenseSummaryResponse:
+    """
+    Retrieve an expense summary for the current user.
+    Includes a monthly breakdown for the specified year and a daily breakdown for the specified number of past days.
+    """
+    current_datetime = datetime.datetime.now() # Use datetime.datetime for current year
+    if year is None:
+        year = current_datetime.year
+
+    monthly_summary_data = crud_summary.get_monthly_expense_summary(
+        db=session, user_id=current_user.id, year=year
+    )
+
+    # Use datetime.date for date calculations
+    end_date_for_daily = datetime.date.today()
+    start_date_for_daily = end_date_for_daily - datetime.timedelta(days=days_for_daily - 1)
+    
+    daily_summary_data = crud_summary.get_daily_expense_summary_for_period(
+        db=session,
+        user_id=current_user.id,
+        start_date=start_date_for_daily,
+        end_date=end_date_for_daily,
+    )
+
+    return UserExpenseSummaryResponse(
+        monthly_summary=monthly_summary_data,
+        daily_summary=daily_summary_data
+    )
+
+
 @router.delete("/me", response_model=Message)
 def delete_user_me(session: SessionDep, current_user: CurrentUser) -> Any:
     """
@@ -143,14 +224,14 @@ def register_user(session: SessionDep, user_in: UserRegister) -> Any:
     """
     Create new user without the need to be logged in.
     """
-    db_user = user.get_user_by_email(session=session, email=user_in.email)
+    db_user = crud_user.get_user_by_email(session=session, email=user_in.email)
     if db_user:
         raise HTTPException(
             status_code=400,
             detail="The user with this email already exists in the system",
         )
     user_create = UserCreate.model_validate(user_in)
-    db_user = user.create_user(session=session, user_create=user_create)
+    db_user = crud_user.create_user(session=session, user_create=user_create)
     return db_user
 
 
@@ -194,13 +275,13 @@ def update_user(
             detail="The user with this id does not exist in the system",
         )
     if user_in.email:
-        existing_user = user.get_user_by_email(session=session, email=user_in.email)
+        existing_user = crud_user.get_user_by_email(session=session, email=user_in.email)
         if existing_user and existing_user.id != user_id:
             raise HTTPException(
                 status_code=409, detail="User with this email already exists"
             )
 
-    db_user = user.update_user(session=session, db_user=db_user, user_in=user_in)
+    db_user = crud_user.update_user(session=session, db_user=db_user, user_in=user_in)
     return db_user
 
 

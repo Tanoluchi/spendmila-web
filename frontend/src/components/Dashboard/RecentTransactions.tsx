@@ -1,89 +1,153 @@
-import React from 'react';
- import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
- import { Avatar } from "@/components/ui/avatar";
- import { Button } from "@/components/ui/button";
- 
- const transactions = [
-   {
-     id: 1,
-     name: "Grocery Store",
-     description: "Weekly groceries",
-     amount: -125.60,
-     date: "Apr 23, 2025",
-     category: "Food"
-   },
-   {
-     id: 2,
-     name: "Salary Deposit",
-     description: "Monthly salary",
-     amount: 3500.00,
-     date: "Apr 20, 2025",
-     category: "Income"
-   },
-   {
-     id: 3,
-     name: "Netflix",
-     description: "Subscription",
-     amount: -15.99,
-     date: "Apr 18, 2025",
-     category: "Entertainment"
-   },
-   {
-     id: 4,
-     name: "Electric Bill",
-     description: "Monthly utility",
-     amount: -98.45,
-     date: "Apr 15, 2025",
-     category: "Utilities"
-   },
-   {
-     id: 5,
-     name: "Gas Station",
-     description: "Fuel",
-     amount: -45.30,
-     date: "Apr 13, 2025",
-     category: "Transportation"
-   }
- ];
- 
- const getCategoryInitials = (category: string) => {
-   return category.substring(0, 1);
- };
- 
- const RecentTransactions = () => {
-   return (
-     <Card>
-       <CardHeader className="flex flex-row items-center justify-between">
-         <CardTitle>Recent Transactions</CardTitle>
-         <Button variant="outline" size="sm">View All</Button>
-       </CardHeader>
-       <CardContent>
-         <div className="space-y-4">
-           {transactions.map((transaction) => (
-             <div key={transaction.id} className="flex items-center justify-between">
-               <div className="flex items-center gap-4">
-                 <Avatar className={`bg-${transaction.amount > 0 ? 'green' : 'purple'}-100 text-${transaction.amount > 0 ? 'green' : 'purple'}-600`}>
-                   <div className="w-full h-full flex items-center justify-center">
-                     {getCategoryInitials(transaction.category)}
-                   </div>
-                 </Avatar>
-                 <div>
-                   <p className="text-sm font-medium">{transaction.name}</p>
-                   <p className="text-xs text-muted-foreground">{transaction.description}</p>
-                 </div>
-               </div>
-               <div className="text-right">
-                 <p className={`text-sm font-medium ${transaction.amount > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                   {transaction.amount > 0 ? '+' : '-'}${Math.abs(transaction.amount).toFixed(2)}
-                 </p>
-                 <p className="text-xs text-muted-foreground">{transaction.date}</p>
-               </div>
-             </div>
-           ))}
-         </div>
-       </CardContent>
-     </Card>
-   );
- };
- 
- export default RecentTransactions;
+import React, { useState, useEffect } from 'react';
+import { PaginatedTransactionsResponse, TransactionFilter } from '@/types/transaction';
+import { TransactionService } from '@/client/services/TransactionService';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { ArrowLeft, ArrowRight, AlertCircle } from 'lucide-react';
+
+const RecentTransactions: React.FC = () => {
+  const [transactionsResponse, setTransactionsResponse] = useState<PaginatedTransactionsResponse | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [pageSize] = useState<number>(5); // Or any default page size you prefer
+
+  const fetchTransactions = async (page: number, limit: number) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const filters: TransactionFilter = { page, page_size: limit };
+      const response = await TransactionService.getTransactions(filters);
+      setTransactionsResponse(response);
+    } catch (err: any) {
+      setError(err.message || 'Failed to fetch transactions.');
+      console.error("Error fetching transactions:", err);
+    }
+    setIsLoading(false);
+  };
+
+  useEffect(() => {
+    fetchTransactions(currentPage, pageSize);
+  }, [currentPage, pageSize]);
+
+  const handlePreviousPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
+  const handleNextPage = () => {
+    if (transactionsResponse && currentPage < transactionsResponse.total_pages) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Recent Transactions</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2">
+            {[...Array(pageSize)].map((_, i) => (
+              <div key={i} className="h-10 bg-gray-200 rounded animate-pulse" />
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Recent Transactions</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Error</AlertTitle>
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!transactionsResponse || transactionsResponse.items.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Recent Transactions</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p>No transactions found.</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Recent Transactions</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Date</TableHead>
+              <TableHead>Description</TableHead>
+              <TableHead>Category</TableHead>
+              <TableHead className="text-right">Amount</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {transactionsResponse.items.map((transaction) => (
+              <TableRow key={transaction.id}>
+                <TableCell>{new Date(transaction.date).toLocaleDateString()}</TableCell>
+                <TableCell>{transaction.description}</TableCell>
+                <TableCell>{transaction.category?.name || 'N/A'}</TableCell>
+                <TableCell className={`text-right ${transaction.transaction_type === 'income' ? 'text-green-500' : 'text-red-500'}`}>
+                  {transaction.transaction_type === 'income' ? '+' : '-'}
+                  {transaction.currency?.symbol || ''}{transaction.amount.toFixed(2)}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+        <div className="flex items-center justify-between mt-4">
+          <div>
+            <p className="text-sm text-gray-700">
+              Showing page {transactionsResponse.page} of {transactionsResponse.total_pages}
+            </p>
+          </div>
+          <div className="space-x-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handlePreviousPage} 
+              disabled={currentPage <= 1}
+            >
+              <ArrowLeft className="mr-2 h-4 w-4" /> Previous
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleNextPage} 
+              disabled={currentPage >= transactionsResponse.total_pages}
+            >
+              Next <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
+export default RecentTransactions;

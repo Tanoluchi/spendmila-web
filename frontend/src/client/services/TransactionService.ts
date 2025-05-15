@@ -1,74 +1,7 @@
 import type { CancelablePromise } from "../core/CancelablePromise";
 import { OpenAPI } from "../core/OpenAPI";
 import { request as __request } from "../core/request";
-import { TransactionFilter } from "@/types/transaction";
-
-// Define category type
-export interface Category {
-  id: string;
-  name: string;
-  description?: string;
-  category_type: string;
-  icon?: string;
-  color?: string;
-  is_active: boolean;
-}
-
-// Define account type
-export interface Account {
-  id: string;
-  name: string;
-  account_type: string;
-  balance: number;
-  institution?: string;
-  icon?: string;
-  color?: string;
-  is_default: boolean;
-  user_id: string;
-  currency_id: string;
-}
-
-// Define currency type
-export interface Currency {
-  id: string;
-  code: string;
-  name: string;
-  symbol: string;
-}
-
-// Define transaction types
-export interface Transaction {
-  id: string;
-  date: string;
-  description: string;
-  amount: number;
-  transaction_type: 'income' | 'expense';
-  category: Category;
-  account: Account;
-  user_id: string;
-  currency: Currency;
-  is_active: boolean;
-  notes?: string;
-}
-
-export interface CreateTransactionRequest {
-  date: string;
-  description: string;
-  amount: number;
-  transaction_type: 'income' | 'expense';
-  category_id: string;
-  account_id: string;
-  currency_id: string;
-  notes?: string;
-}
-
-export interface PaginatedTransactionsResponse {
-  items: Transaction[];
-  total: number;
-  page: number;
-  page_size: number;
-  total_pages: number;
-}
+import { TransactionFilter, Transaction, PaginatedTransactionsResponse, Category, Account, Currency, TransactionCreate, TransactionUpdate } from "@/types/transaction";
 
 export class TransactionService {
   /**
@@ -106,7 +39,7 @@ export class TransactionService {
 
     return __request(OpenAPI, {
       method: "GET",
-      url: "/api/v1/transactions/",
+      url: "/api/v1/users/me/transactions/",
       query: params,
       errors: {
         422: "Validation Error",
@@ -138,7 +71,7 @@ export class TransactionService {
    * @throws ApiError
    */
   public static createTransaction(
-    data: CreateTransactionRequest
+    data: TransactionCreate
   ): CancelablePromise<Transaction> {
     return __request(OpenAPI, {
       method: "POST",
@@ -160,7 +93,7 @@ export class TransactionService {
    */
   public static updateTransaction(
     id: string,
-    data: CreateTransactionRequest
+    data: TransactionUpdate
   ): CancelablePromise<Transaction> {
     return __request(OpenAPI, {
       method: "PATCH",
