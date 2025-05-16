@@ -78,6 +78,10 @@ const AddTransaction = ({ isOpen: externalIsOpen, onOpenChange }: AddTransaction
       currency_id: "",
       category_id: "",
       payment_method_id: "",
+      account_id: "",
+      financial_goal_id: "",
+      debt_id: "",
+      subscription_id: "",
     },
   });
 
@@ -93,6 +97,10 @@ const AddTransaction = ({ isOpen: externalIsOpen, onOpenChange }: AddTransaction
         currency_id: user?.default_currency_id || "",
         category_id: "",
         payment_method_id: "",
+        account_id: "", // Will be set below
+        financial_goal_id: "",
+        debt_id: "",
+        subscription_id: "",
       });
       
       if (user?.default_currency_id) {
@@ -115,11 +123,44 @@ const AddTransaction = ({ isOpen: externalIsOpen, onOpenChange }: AddTransaction
         // ya que ahora son entidades globales sin "default"
         setValue("payment_method_id", paymentMethods[0].id);
       }
+
+      // Set default account to "Cash" or the first available account
+      if (accounts.length > 0) {
+        const cashAccount = accounts.find(acc => acc.name.toLowerCase() === 'cash');
+        if (cashAccount) {
+          setValue("account_id", cashAccount.id);
+          // Update reset call default for account_id as well
+          reset(currentValues => ({ ...currentValues, account_id: cashAccount.id })); 
+        } else {
+          setValue("account_id", accounts[0].id);
+          reset(currentValues => ({ ...currentValues, account_id: accounts[0].id }));
+        }
+      } else {
+        reset(currentValues => ({ ...currentValues, account_id: "" }));
+      }
     }
-  }, [isOpen, currencies, categories, paymentMethods, setValue, reset, user]);
+  }, [isOpen, currencies, categories, paymentMethods, accounts, setValue, reset, user]);
 
   const transactionType = watch("transaction_type");
   const selectedAccountId = watch("account_id");
+
+  // Clear payment_method_id if transaction_type is 'income'
+  useEffect(() => {
+    if (transactionType === 'income') {
+      setValue("payment_method_id", "");
+      setValue("financial_goal_id", "");
+      setValue("debt_id", "");
+      setValue("subscription_id", "");
+      // Optionally hide advanced options if switching to income from expense
+      // and they were visible
+      if (showAdvancedOptions) {
+        setShowAdvancedOptions(false);
+      }
+    } else if (transactionType === 'expense') {
+      // If switching to expense, payment method might become visible/required
+      // but other optional fields are handled by the main conditional display logic
+    }
+  }, [transactionType, setValue, showAdvancedOptions]);
 
   // Update currency when account changes
   useEffect(() => {
@@ -385,35 +426,37 @@ const AddTransaction = ({ isOpen: externalIsOpen, onOpenChange }: AddTransaction
                   </Select>
                 </Field>
 
-                <Field
-                  required
-                  invalid={!!errors.payment_method_id}
-                  errorText={errors.payment_method_id?.message}
-                  label="Payment Method"
-                >
-                  <Select
-                    id="payment_method_id"
-                    {...register("payment_method_id", {
-                      required: "Payment method is required.",
-                    })}
-                    placeholder="Select payment method"
-                    disabled={paymentMethodsLoading}
+                {transactionType === 'expense' && (
+                  <Field
+                    required={transactionType === 'expense'} // Only required if expense
+                    invalid={!!errors.payment_method_id}
+                    errorText={errors.payment_method_id?.message}
+                    label="Payment Method"
                   >
-                    {paymentMethods && paymentMethods.length > 0 ? (
-                      paymentMethods.map((method) => (
-                        <option key={method.id} value={method.id}>
-                          {method.name}
-                        </option>
-                      ))
-                    ) : (
-                      <option value="" disabled>No payment methods available</option>
-                    )}
-                  </Select>
-                </Field>
+                    <Select
+                      id="payment_method_id"
+                      {...register("payment_method_id", {
+                        required: transactionType === 'expense' ? "Payment method is required." : false,
+                      })}
+                      placeholder="Select payment method"
+                      disabled={paymentMethodsLoading}
+                    >
+                      {paymentMethods && paymentMethods.length > 0 ? (
+                        paymentMethods.map((method) => (
+                          <option key={method.id} value={method.id}>
+                            {method.name}
+                          </option>
+                        ))
+                      ) : (
+                        <option value="" disabled>No payment methods available</option>
+                      )}
+                    </Select>
+                  </Field>
+                )}
               </div>
               
               {/* Optional fields section */}
-              {hasOptionalItems && (
+              {hasOptionalItems && transactionType === 'expense' && (
                 <div className="mt-6 pt-4 border-t border-gray-200">
                   <button
                     type="button"
