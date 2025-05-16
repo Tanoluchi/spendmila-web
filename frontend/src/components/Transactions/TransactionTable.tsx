@@ -35,6 +35,13 @@ interface Currency {
   symbol: string;
 }
 
+interface PaymentMethod {
+  id: string;
+  name: string;
+  is_active: boolean;
+  // Add other relevant fields if needed, e.g., type
+}
+
 interface Transaction {
   id: string;
   date: string;
@@ -47,6 +54,7 @@ interface Transaction {
   currency: Currency;
   is_active: boolean;
   notes?: string;
+  payment_method?: PaymentMethod; // Added payment method
 }
 
 // Define utility functions locally to avoid import issues
@@ -126,6 +134,7 @@ const TransactionTable: React.FC<TransactionTableProps> = ({
               <th className="text-left py-3 px-4 font-semibold">Description</th>
               <th className="text-left py-3 px-4 font-semibold">Category</th>
               <th className="text-left py-3 px-4 font-semibold">Account</th>
+              <th className="text-left py-3 px-4 font-semibold">Payment Method</th>
               <th className="text-right py-3 px-4 font-semibold">Amount</th>
               <th className="text-right py-3 px-4 font-semibold">Actions</th>
             </tr>
@@ -137,6 +146,7 @@ const TransactionTable: React.FC<TransactionTableProps> = ({
                 <td className="py-3 px-4">{transaction.description}</td>
                 <td className="py-3 px-4">{getCategoryName(transaction.category)}</td>
                 <td className="py-3 px-4">{getAccountName(transaction.account, accounts)}</td>
+                <td className="py-3 px-4">{transaction.payment_method?.name || 'N/A'}</td>
                 <td className={`py-3 px-4 text-right font-medium ${transaction.transaction_type === 'income' ? 'text-green-500' : 'text-red-500'}`}>
                   {formatCurrency(transaction.amount, transaction.transaction_type)}
                 </td>

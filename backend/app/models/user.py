@@ -42,6 +42,10 @@ class UserBase(SQLModel):
     # Foreign key for default currency
     default_currency_id: uuid.UUID = Field(default=None, foreign_key="currency.id")
 
+    @property
+    def full_name(self) -> str:
+        return f"{self.first_name} {self.last_name}"
+
 # Main database model
 class User(UserBase, table=True):
     model_config = ConfigDict(arbitrary_types_allowed=True)
