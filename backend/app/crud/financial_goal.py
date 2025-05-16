@@ -2,6 +2,7 @@ import uuid
 from typing import Sequence
 
 from sqlmodel import Session, select
+from sqlalchemy.orm import selectinload # Added for eager loading
 
 from app.models.financial_goal import FinancialGoal
 from app.schemas.financial_goal import FinancialGoalCreate, FinancialGoalUpdate
@@ -11,8 +12,10 @@ def get_financial_goal(
     *, session: Session, goal_id: uuid.UUID, user_id: uuid.UUID
 ) -> FinancialGoal | None:
     """Get a financial goal by ID, ensuring it belongs to the user."""
-    statement = select(FinancialGoal).where(
-        FinancialGoal.id == goal_id, FinancialGoal.user_id == user_id
+    statement = (
+        select(FinancialGoal)
+        .where(FinancialGoal.id == goal_id, FinancialGoal.user_id == user_id)
+        .options(selectinload(FinancialGoal.transactions)) # Eagerly load transactions
     )
     return session.exec(statement).first()
 
@@ -24,6 +27,7 @@ def get_financial_goals_by_user(
     statement = (
         select(FinancialGoal)
         .where(FinancialGoal.user_id == user_id)
+        .options(selectinload(FinancialGoal.transactions)) # Eagerly load transactions
     )
     return session.exec(statement).all()
 

@@ -1,11 +1,13 @@
 import datetime
 import uuid
-
+from decimal import Decimal, ROUND_HALF_UP
 from typing import Optional, List, Dict, Any
 
 from pydantic import ConfigDict
 from sqlmodel import Field, SQLModel
 
+# Ensure FinancialGoal model is available for type hinting if needed, though it's passed as 'Any'
+# from app.models.financial_goal import FinancialGoal # Not strictly needed for runtime if goal is 'Any'
 from app.models.enums import FinancialGoalStatus, FinancialGoalType
 
 
@@ -71,49 +73,69 @@ class FinancialGoalAddSaving(SQLModel):
 
 # Utility functions for converting models to API response format
 
-def format_financial_goal_for_response(goal) -> Dict[str, Any]:
+def format_financial_goal_for_response(goal: Any) -> Optional[Dict[str, Any]]:
     """
     Convert a FinancialGoal model instance to a dictionary format suitable for API responses.
-    This handles nested objects like user and currency properly.
+    This handles nested objects like user and currency properly and calculates current_amount
+    by including linked transactions.
     
     Args:
-        goal: A FinancialGoal model instance
+        goal: A FinancialGoal model instance (expected to have 'transactions' loaded).
         
     Returns:
-        Dict[str, Any]: A dictionary representation of the goal with properly formatted nested objects
+        Dict[str, Any]: A dictionary representation of the goal with properly formatted nested objects.
     """
     if not goal:
         return None
         
-    # Calculate progress percentage
-    progress_percentage = 0
-    if goal.target_amount > 0:
-        progress_percentage = (goal.current_amount / goal.target_amount) * 100
+    # Start with the manually added savings (from FinancialGoal.current_amount field)
+    # This field is updated by the 'add_saving_to_goal' CRUD operation.
+    effective_current_amount = Decimal(str(goal.current_amount or '0.00'))
+
+    # Add amounts from linked transactions
+    # Assumes goal.transactions are loaded by the caller (e.g., via selectinload)
+    if hasattr(goal, "transactions") and goal.transactions:
+        for transaction in goal.transactions:
+            # Only consider active transactions and assume their amounts contribute positively to the goal.
+            if hasattr(transaction, 'is_active') and transaction.is_active and hasattr(transaction, 'amount'):
+                effective_current_amount += Decimal(str(transaction.amount or '0.00'))
     
-    # Create the base dictionary from the model
+    # Calculate progress percentage using the effective_current_amount
+    progress_percentage = Decimal('0.00')
+    target_amount_decimal = Decimal(str(goal.target_amount or '0.00'))
+
+    if target_amount_decimal > Decimal('0.00'):
+        progress_percentage = (effective_current_amount / target_amount_decimal) * Decimal('100')
+        progress_percentage = min(progress_percentage, Decimal('100.00')) # Cap at 100%
+    
+    # Ensure two decimal places for currency values and percentages
+    effective_current_amount = effective_current_amount.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+    target_amount_decimal = target_amount_decimal.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+    progress_percentage = progress_percentage.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+
     goal_dict = {
         "id": goal.id,
         "name": goal.name,
         "description": goal.description,
-        "target_amount": goal.target_amount,
-        "current_amount": goal.current_amount,
+        "target_amount": float(target_amount_decimal),
+        "current_amount": float(effective_current_amount), # Use the dynamically calculated amount
         "deadline": goal.deadline,
         "status": goal.status,
         "goal_type": goal.goal_type,
         "icon": goal.icon,
-        # color field has been removed from the model
-        "is_active": getattr(goal, "is_active", True),
+        "is_active": getattr(goal, "is_active", True), # Retain existing getattr for fields not directly on model
         "user_id": goal.user_id,
         "account_id": getattr(goal, "account_id", None),
         "created_at": getattr(goal, "created_at", None),
         "updated_at": getattr(goal, "updated_at", None),
-        "progress_percentage": progress_percentage,
-        "savings": []  # Add savings if needed
+        "progress_percentage": float(progress_percentage), # Use the dynamically calculated percentage
+        "savings": []  # This field seems unused or for a different purpose; keeping as is.
     }
     
-    # Handle nested objects
+    # Handle nested user object
     if hasattr(goal, "user") and goal.user:
-        goal_dict["user"] = goal.user.model_dump()
+        # Assuming goal.user is a Pydantic/SQLModel model that supports .model_dump()
+        goal_dict["user"] = goal.user.model_dump() if hasattr(goal.user, 'model_dump') else vars(goal.user)
     else:
         goal_dict["user"] = None
     
