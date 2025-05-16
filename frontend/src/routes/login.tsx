@@ -5,7 +5,7 @@ import {
 } from "@tanstack/react-router"
 import { type SubmitHandler, useForm } from "react-hook-form"
 import { Mail, Lock, Eye, EyeOff, Loader2 } from "lucide-react"
-import React, { useState } from 'react'
+import { useState } from 'react';
 import { cn } from "@/lib/utils"
 
 import type { Body_login_login_access_token as AccessToken } from "@/client"
@@ -14,7 +14,6 @@ import { Input } from "@/components/ui/input"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import useAuth, { isLoggedIn } from "@/hooks/useAuth"
 import { emailPattern, passwordRules } from "../utils"
-import CatMascot from "@/components/Landing/CatMascot"
 
 export const Route = createFileRoute("/login")({
   component: Login,
@@ -55,7 +54,7 @@ function Login() {
     <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-background dark:bg-gray-950">
       <div className="w-full max-w-md space-y-8">
         <div className="flex flex-col items-center space-y-2">
-          <CatMascot size="lg" animate={true} />
+          <img src="/assets/images/logo.png" alt="SpendMila Logo" className="w-20 h-20" />
           <h1 className="text-3xl font-bold text-purple-dark dark:text-purple">Welcome to SpendMila</h1>
           <p className="text-muted-foreground text-center dark:text-gray-300">
             Sign in to manage your finances with your feline friend

@@ -1,7 +1,6 @@
 import React from 'react';
 import { Button } from "@/components/ui/button";
 import { Check } from 'lucide-react';
-import CatMascot from './CatMascot';
 
 interface PlanFeature {
   text: string;
@@ -39,7 +38,7 @@ const PricingPlan: React.FC<PricingPlanProps> = ({
       )}
       
       <div className="flex items-center mb-4">
-        {isPopular && <CatMascot size="sm" className="mr-2" />}
+        {isPopular && <img src="/assets/images/logo.png" alt="SpendMila Logo" className="w-8 h-8 mr-2" />}
         <h3 className="text-xl font-bold dark:text-white">{name}</h3>
       </div>
       

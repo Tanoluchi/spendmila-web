@@ -1,6 +1,5 @@
 
 import React from 'react';
-import CatMascot from './CatMascot';
 import { Mail, Phone, MessageSquare } from 'lucide-react';
 
 const Footer: React.FC = () => {
@@ -13,7 +12,7 @@ const Footer: React.FC = () => {
           {/* Logo and description */}
           <div className="col-span-1 md:col-span-1">
             <div className="flex items-center mb-4">
-              <CatMascot size="sm" className="mr-2" />
+              <img src="/assets/images/logo.png" alt="SpendMila Logo" className="w-8 h-8 mr-2" />
               <span className="text-xl font-bold">SpendMila</span>
             </div>
             <p className="text-gray-400 mb-4">
