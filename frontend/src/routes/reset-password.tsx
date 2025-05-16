@@ -11,7 +11,6 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { isLoggedIn } from "@/hooks/useAuth"
 import useCustomToast from "@/hooks/useCustomToast"
 import { confirmPasswordRules, handleError, passwordRules } from "@/utils"
-import CatMascot from "@/components/Landing/CatMascot"
 
 interface NewPasswordForm extends NewPassword {
   confirm_password: string
@@ -59,7 +58,7 @@ function ResetPassword() {
       navigate({ to: "/login" })
     },
     onError: (err: ApiError) => {
-      handleError(err)
+      handleError(err, showErrorToast)
     },
   })
 
@@ -72,7 +71,7 @@ function ResetPassword() {
     <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-background dark:bg-gray-950">
       <div className="w-full max-w-md space-y-8">
         <div className="flex flex-col items-center space-y-2">
-          <CatMascot size="lg" animate={true} />
+          <img src="/assets/images/logo.png" alt="SpendMila Logo" className="w-20 h-20" />
           <h1 className="text-3xl font-bold text-purple-dark dark:text-purple">Reset Password</h1>
           <p className="text-muted-foreground text-center dark:text-gray-300">
             Please enter your new password and confirm it to reset your password.

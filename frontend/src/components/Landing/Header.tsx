@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
-import CatMascot from './CatMascot';
 import { Menu, X } from 'lucide-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { Link } from '@tanstack/react-router';
@@ -13,7 +12,7 @@ const Header: React.FC = () => {
       <div className="container mx-auto">
         <div className="flex justify-between items-center">
           <div className="flex items-center space-x-2">
-            <CatMascot size="sm" />
+            <img src="/assets/images/logo.png" alt="SpendMila Logo" className="w-8 h-8" />
             <span className="text-xl font-bold text-purple-dark dark:text-purple">SpendMila</span>
           </div>
 

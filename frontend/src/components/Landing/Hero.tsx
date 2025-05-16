@@ -1,6 +1,5 @@
 import React from 'react';
 import { Button } from "@/components/ui/button";
-import CatMascot from './CatMascot';
 
 const Hero: React.FC = () => {
   return (
@@ -27,7 +26,7 @@ const Hero: React.FC = () => {
           <div className="md:w-1/2 flex justify-center">
             <div className="relative">
               <div className="bg-purple-light rounded-full w-64 h-64 md:w-80 md:h-80 flex items-center justify-center dark:bg-purple/20">
-                <CatMascot size="lg" animate={true} className="z-10" />
+                <img src="/assets/images/logo.png" alt="SpendMila Logo" className="w-20 h-20 z-10 animate-float" />
               </div>
               
               {/* Decorative elements */}

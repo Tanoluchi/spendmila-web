@@ -10,7 +10,6 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { isLoggedIn } from "@/hooks/useAuth"
 import useCustomToast from "@/hooks/useCustomToast"
 import { emailPattern, handleError } from "@/utils"
-import CatMascot from "@/components/Landing/CatMascot"
 
 interface FormData {
   email: string
@@ -62,7 +61,7 @@ function RecoverPassword() {
     <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-background dark:bg-gray-950">
       <div className="w-full max-w-md space-y-8">
         <div className="flex flex-col items-center space-y-2">
-          <CatMascot size="lg" animate={true} />
+          <img src="/assets/images/logo.png" alt="SpendMila Logo" className="w-20 h-20" />
           <h1 className="text-3xl font-bold text-purple-dark dark:text-purple">Password Recovery</h1>
           <p className="text-muted-foreground text-center dark:text-gray-300">
             A password recovery email will be sent to the registered account.

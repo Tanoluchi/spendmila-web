@@ -1,6 +1,5 @@
 import React from 'react';
 import { Check } from 'lucide-react';
-import CatMascot from './CatMascot';
 
 const Benefits: React.FC = () => {
   const testimonials = [
@@ -43,7 +42,7 @@ const Benefits: React.FC = () => {
           {/* Benefits side */}
           <div className="bg-white p-8 rounded-lg shadow-sm border border-gray-100 dark:bg-gray-800 dark:border-gray-700 dark:shadow-gray-900/30">
             <div className="flex items-center mb-6">
-              <CatMascot size="sm" className="mr-3" />
+              <img src="/assets/images/logo.png" alt="SpendMila Logo" className="w-8 h-8 mr-3" />
               <h3 className="text-2xl font-bold dark:text-white">Benefits You'll Experience</h3>
             </div>
             
